@@ -63,6 +63,17 @@ export interface LlmsOptions {
      * being read on its own with no page around it.
      */
     readonly summary: string;
+    /**
+     * Markdown between the summary and the first heading.
+     *
+     * The format allows it — sections of any kind except headings sit there — and
+     * it is where a site puts the two or three paragraphs that qualify the
+     * one-line summary without earning a heading of their own. The second
+     * consumer had exactly that and there was nowhere to put it: folding the
+     * paragraphs into the blockquote would have said they were all the summary,
+     * and giving them a heading would have invented a section.
+     */
+    readonly details?: string;
     /** The site's own sections, in the order they should appear. */
     readonly sections?: readonly LlmsSection[];
     /**

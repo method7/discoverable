@@ -246,3 +246,32 @@ describe('an organisation with no registered company', () => {
     expect(text).toContain('[Call Method7](tel:+447971389430)');
   });
 });
+
+describe('prose between the summary and the first heading', () => {
+  it('sits after the blockquote and before the sections', () => {
+    // The format allows it, and it is where the paragraphs that qualify a
+    // one-line summary go without earning a heading of their own.
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'One line about it.',
+      details: 'A qualifying paragraph.\n\nAnd another.',
+      sections: [{ heading: 'Pages', links: [{ title: 'Home', url: '/' }] }],
+    });
+
+    const quote = text.indexOf('> One line about it.');
+    const detail = text.indexOf('A qualifying paragraph.');
+    const heading = text.indexOf('## Pages');
+
+    expect(quote).toBeLessThan(detail);
+    expect(detail).toBeLessThan(heading);
+    expect(text).toContain('And another.');
+  });
+
+  it('is skipped entirely when absent, leaving no gap', () => {
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'One line.',
+      sections: [{ heading: 'Pages', links: [{ title: 'Home', url: '/' }] }],
+    });
+
+    expect(text).toContain('> One line.\n\n## Pages');
+  });
+});

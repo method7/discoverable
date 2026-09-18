@@ -130,7 +130,8 @@ export const buildLlmsTxt = (facts, options) => {
         .map((part) => `> ${part}`.trimEnd())
         .join('\n');
     const body = sections.map(render).join('\n\n');
-    return `# ${facts.name}\n\n${blockquote}\n\n${body}\n`;
+    const details = options.details?.trim();
+    return [`# ${facts.name}`, blockquote, ...(details ? [details] : []), body].join('\n\n') + '\n';
 };
 /**
  * What the file must mention, so a test can check the generator kept it.
