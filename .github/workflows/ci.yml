@@ -1,0 +1,60 @@
+name: CI
+
+# Typecheck, lint, test, and prove the committed build matches the source.
+#
+# The last one is the reason this workflow exists. `dist/` is tracked, which is
+# not a thing to do lightly: a committed build output can drift from what
+# produced it, silently, and a consumer would get the stale one with nothing
+# anywhere saying so.
+#
+# It is tracked because consumers install this straight from git. npm does that
+# by cloning the package and running `npm install` inside it to execute
+# `prepare`, and that inner install crashes on npm 10 — so the choice was
+# shipping the output or being uninstallable by one of the two package managers
+# in use. Publishing to the registry would retire both the tracked output and
+# this job.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # The committed output is the thing consumers actually get. Rebuilding and
+      # diffing is the only way to know it is the output of this source.
+      - name: The committed build matches the source
+        run: |
+          set -euo pipefail
+          pnpm build
+          if ! git diff --quiet -- dist; then
+            echo "::error::dist/ is stale. Run 'pnpm build' and commit the result."
+            git diff --stat -- dist
+            exit 1
+          fi
+          echo "dist/ is the output of this source"
