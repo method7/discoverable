@@ -183,8 +183,10 @@ pnpm add @method7/discoverable
 pnpm verify   # typecheck, lint, test
 ```
 
-Node 22 or later. No runtime dependencies, and no framework ones — that is
-deliberate and worth keeping.
+Node 22 or later. One runtime dependency, `zod`, for the schema. No framework
+dependency of any kind, which is the part worth keeping: everything here reads
+output or transforms data, so it should never need to know what rendered the
+page.
 
 ---
 
