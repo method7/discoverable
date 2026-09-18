@@ -15,5 +15,6 @@
  * README for why the last one is not an oversight.
  */
 export * from './facts';
+export * from './graph';
 export * from './validate';
 export * from './indexnow';

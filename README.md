@@ -113,6 +113,45 @@ privacy policy where naming the controller is a legal requirement; putting it in
 structured data is a different act, and for a small company that line is
 frequently somebody's home.
 
+### `buildGraph(facts, options?)`
+
+The structured data, from the same declaration.
+
+```ts
+import { buildStructuredData, organisationId } from '@method7/discoverable';
+import { facts } from './facts';
+
+const data = buildStructuredData(facts, {
+  organisationType: 'ProfessionalService',   // when that is true
+  extra: [                                   // what the schema cannot derive
+    { '@type': 'FAQPage', mainEntity: questions },
+  ],
+});
+```
+
+Three nodes come out of the facts: the organisation, the person behind it, and
+the website. They cross-reference by `@id` rather than describing each other
+inline, so the relationship between a founder and a company is one fact stated
+once instead of two that can disagree.
+
+Everything else is yours. A `FAQPage` needs questions somebody wrote, a `HowTo`
+needs steps in a product's own vocabulary, a `MobileApplication` needs a release
+state. None is derivable from a company record, and a package that modelled them
+would be modelling one site's content and calling it a standard. `extra` joins
+them to the same graph with the same `@id`s available to point at.
+
+**The graph and the claims are held together by a test.** `claimsOf` says what a
+page must show; `buildGraph` makes the assertion that demands it. If the graph
+gains a claim-bearing field and the claims do not, the test fails — because
+otherwise the validator would never ask a page to show it, and the site could
+quietly start telling machines something it does not tell readers.
+
+Two smaller decisions worth knowing: a company number is emitted as a
+`PropertyValue` naming its register, because `identifier: "12345678"` is a
+string nobody can look up; and nothing is emitted as `null`, because
+`"legalName": null` tells a consumer the site has no legal name, which is worse
+than saying nothing.
+
 ### `validateBuild(dir, facts)`
 
 Reads HTML and XML off disk and returns findings. It knows nothing about any
