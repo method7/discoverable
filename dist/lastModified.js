@@ -80,6 +80,20 @@ export const lastModified = (files, options = {}) => {
         .map((date) => new Date(date))
         .filter((date) => !Number.isNaN(date.getTime()))
         .sort((a, b) => a.getTime() - b.getTime());
-    return dates.at(-1)?.toISOString() ?? null;
+    /**
+     * To the second, with no milliseconds.
+     *
+     * Both forms are valid W3C Datetime and a sitemap has no use for sub-second
+     * precision, so the shorter one is the tidier output. It is also what
+     * method7.co.uk was already emitting, and its CI asserts the format — which
+     * is how this was caught rather than shipped.
+     *
+     * Safe to change because `changedUrls` compares these as instants rather than
+     * as strings: `...08.000Z` and `...08Z` parse to the same moment, so the
+     * first deploy after the change does not read as every page having changed.
+     * That would have been the "submit everything" failure IndexNow exists to
+     * avoid, arriving through the back door.
+     */
+    return dates.at(-1)?.toISOString().replace(/\.\d{3}Z$/, 'Z') ?? null;
 };
 //# sourceMappingURL=lastModified.js.map

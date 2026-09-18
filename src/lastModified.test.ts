@@ -61,8 +61,9 @@ describe('lastModified', () => {
 
     const result = lastModified(['page.md'], { cwd: REPO });
 
-    expect(result).toBe('2026-09-17T09:15:30.000Z');
+    expect(result).toBe('2026-09-17T09:15:30Z');
     expect(result).not.toBe('2026-09-17');
+    expect(result).not.toMatch(/\.\d{3}Z$/);
   });
 
   it('takes the newest across the files a page is built from', () => {
@@ -72,7 +73,7 @@ describe('lastModified', () => {
     commitAt('data.ts', 'b', '2026-09-16T10:00:00+00:00');
 
     expect(lastModified(['template.astro', 'data.ts'], { cwd: REPO })).toBe(
-      '2026-09-16T10:00:00.000Z',
+      '2026-09-16T10:00:00Z',
     );
   });
 
@@ -91,8 +92,8 @@ describe('lastModified', () => {
 
     const newest = lastModified(['looks-later.md', 'is-later.md'], { cwd: REPO });
 
-    expect(newest).toBe('2026-09-17T06:00:00.000Z');
-    expect(newest).not.toBe('2026-09-17T05:00:00.000Z');
+    expect(newest).toBe('2026-09-17T06:00:00Z');
+    expect(newest).not.toBe('2026-09-17T05:00:00Z');
   });
 
   it('returns null for a file git has never seen', () => {
@@ -120,5 +121,22 @@ describe('lastModified', () => {
 
     // Deleted from disk and still answered, which it could only do from cache.
     expect(second).toBe(first);
+  });
+});
+
+describe('the shape of the stamp', () => {
+  it('has no milliseconds, which a sitemap has no use for', () => {
+    commitAt('page.md', 'one', '2026-09-17T09:15:30+00:00');
+
+    expect(lastModified(['page.md'], { cwd: REPO })).toBe('2026-09-17T09:15:30Z');
+  });
+
+  it('is still an instant a Date can parse, which is what the diff compares', () => {
+    // `changedUrls` compares parsed instants rather than strings, which is why
+    // dropping the milliseconds cannot make an unchanged page look changed.
+    commitAt('page.md', 'one', '2026-09-17T09:15:30+00:00');
+    const stamp = lastModified(['page.md'], { cwd: REPO })!;
+
+    expect(Date.parse(stamp)).toBe(Date.parse('2026-09-17T09:15:30.000Z'));
   });
 });
