@@ -158,6 +158,25 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
 };
 
 /**
+ * A heading, then prose, then links.
+ *
+ * The links join the prose's own list rather than starting a second one when
+ * the prose already ends in one. A blank line between two lists is two lists to
+ * a markdown parser, and a section like "Who makes it" — three facts, then five
+ * places to go — is one list that happens to be built from two sources.
+ */
+const render = (section: LlmsSection): string => {
+  const prose = section.body?.trim() ?? '';
+  const links = (section.links ?? []).map(linkLine).join('\n');
+
+  if (prose === '') return links === '' ? `## ${section.heading}` : `## ${section.heading}\n\n${links}`;
+  if (links === '') return `## ${section.heading}\n\n${prose}`;
+
+  const continuesAList = /(^|\n)\s*[-*+]\s[^\n]*$/.test(prose);
+  return `## ${section.heading}\n\n${prose}${continuesAList ? '\n' : '\n\n'}${links}`;
+};
+
+/**
  * The whole file.
  *
  * Returned as a string rather than written, so the caller decides where it goes
@@ -179,16 +198,7 @@ export const buildLlmsTxt = (facts: SiteFacts, options: LlmsOptions): string => 
     .map((part) => `> ${part}`.trimEnd())
     .join('\n');
 
-  const body = sections
-    .map((section) => {
-      const parts = [`## ${section.heading}`];
-      if (section.body !== undefined && section.body.trim() !== '') parts.push(section.body.trim());
-      if (section.links !== undefined && section.links.length > 0) {
-        parts.push(section.links.map(linkLine).join('\n'));
-      }
-      return parts.join('\n\n');
-    })
-    .join('\n\n');
+  const body = sections.map(render).join('\n\n');
 
   return `# ${facts.name}\n\n${blockquote}\n\n${body}\n`;
 };

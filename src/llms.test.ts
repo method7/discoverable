@@ -181,3 +181,34 @@ describe('the format the specification actually asks for', () => {
     expect(text.startsWith(`# ${FACTS.name}\n`)).toBe(true);
   });
 });
+
+describe('a section whose prose is already a list', () => {
+  it('continues that list rather than starting a second one', () => {
+    // A blank line between two lists is two lists to a markdown parser, and a
+    // section that states three facts and then five places to go is one list
+    // that happens to be built from two sources.
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        {
+          heading: 'Details',
+          body: '- Stage: early.\n- Terminology: Wave, Match.',
+          links: [{ title: 'Logo', url: '/icon.png' }],
+        },
+      ],
+    });
+
+    expect(text).toContain('- Terminology: Wave, Match.\n- [Logo](/icon.png)');
+  });
+
+  it('still separates prose that is a paragraph', () => {
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        { heading: 'Policies', body: 'Some words.', links: [{ title: 'Terms', url: '/terms/' }] },
+      ],
+    });
+
+    expect(text).toContain('Some words.\n\n- [Terms](/terms/)');
+  });
+});
