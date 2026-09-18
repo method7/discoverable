@@ -152,6 +152,75 @@ string nobody can look up; and nothing is emitted as `null`, because
 `"legalName": null` tells a consumer the site has no legal name, which is worse
 than saying nothing.
 
+### `buildLlmsTxt(facts, options)`
+
+`llms.txt` is a markdown file at the root saying plainly what a site is, so a
+model does not have to infer it from navigation and marketing copy. "What is
+this and why does it exist" is the question an assistant is actually asked, and
+a feature list is a poor answer to it.
+
+```ts
+import { buildLlmsTxt } from '@method7/discoverable';
+import { facts } from './facts';
+
+writeFileSync('public/llms.txt', buildLlmsTxt(facts, {
+  summary: 'Acme makes things. It is early, and it says so.',
+  sections: [{ heading: 'What it does', body: '...' }],
+}));
+```
+
+You bring the summary and the sections. It brings the frame and a **derived**
+"Who makes it" block: the founder and their role, the company and its number,
+where it is, how to reach it, every profile link. That block is the reason this
+is a function rather than a template string in each repository — it was a
+template string, and every fact in it was a second copy of something the facts
+module already owned, pinned by a test that would have stayed green while the
+file went stale.
+
+`llmsMustMention(facts)` returns what the output has to contain, so a repository
+can assert its generator has not quietly dropped a fact.
+
+**Write the generator's output to disk, and test the artefact against it.** The
+file lives in `public/`, so editing it by hand looks like it worked: the file
+changes, the dev server serves it, review passes, and the next build silently
+overwrites it. That is not a hypothetical — it happened here, and it was
+reported as shipped.
+
+### `lastModified(files, options?)`
+
+The newest commit across the files a page is built from, as a UTC ISO instant,
+or `null`.
+
+```ts
+import { lastModified } from '@method7/discoverable';
+
+lastModified(['src/pages/about.astro', 'src/lib/facts.ts'], { cwd: repoRoot });
+// '2026-09-17T09:15:30.000Z'
+```
+
+Three decisions, each of which was a bug first:
+
+- **Seconds, not a date.** Truncated to `YYYY-MM-DD`, every deploy after the
+  first one in a day looks identical to it, so an IndexNow diff reports that
+  nothing changed and the real edits go unannounced.
+- **Normalised to UTC.** `%cI` carries the committer's own offset, so
+  `06:00+01:00` sorts after `01:00-05:00` as text and an hour before it in
+  fact. Forcing `Z` makes lexicographic order match chronological order.
+- **`null` rather than now.** A shallow clone has no history, and stamping the
+  build time claims the whole site changed on every deploy. Google drops
+  `lastmod` across an entire site once it decides the field is unreliable, so a
+  confident wrong date is worse than an absent one. Omit the element. Check out
+  with `fetch-depth: 0` in CI.
+
+It takes a list because a page is rarely one file: a route rendered from a data
+module does not change when its own template sits still. Results are cached per
+file, because a layout is a dependency of every route and ten routes asking
+about it and their own template is fifty processes to answer eleven questions.
+
+`cwd` defaults to the process's directory, which is right for a script run from
+a repository root and wrong the moment one is not — `git log` resolves paths
+against its own directory, and a miss looks exactly like a file with no history.
+
 ### `validateBuild(dir, facts)`
 
 Reads HTML and XML off disk and returns findings. It knows nothing about any
@@ -251,10 +320,14 @@ has had to survive a real site at least once.
 
 1. ~~**A Zod schema for the facts**, with the validator's requirements derived
    from it.~~ **Done.** `siteFactsSchema` and `claimsOf`.
-2. **The JSON-LD graph builder.** The other half of the same loop: the graph
+2. ~~**The JSON-LD graph builder.** The other half of the same loop: the graph
    must emit exactly what `claimsOf` requires, and a test should assert it does,
-   so the two cannot drift. Facts in, `@graph` out, node types as options.
-3. **`llms.txt` and git `lastmod`**, both already pure in their home repos.
+   so the two cannot drift.~~ **Done.** `buildGraph` and `buildStructuredData`.
+3. ~~**`llms.txt` and git `lastmod`**, both already pure in their home
+   repos.~~ **Done.** `buildLlmsTxt` and `lastModified`. Neither arrived
+   unchanged: the attribution block is now derived from the facts rather than
+   written out, and `lastModified` gained a `cwd` because both original callers
+   happened to run from a repository root and neither had noticed it mattered.
 4. **Consumed by `delulu.energy`** during its move to Astro.
 5. **Consumed by `method7.co.uk`.** This is the test. The second consumer is
    what proves generality, and the package should be expected to change when it

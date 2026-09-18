@@ -16,5 +16,7 @@
  */
 export * from './facts';
 export * from './graph';
+export * from './llms';
+export * from './lastModified';
 export * from './validate';
 export * from './indexnow';
