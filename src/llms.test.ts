@@ -159,7 +159,7 @@ describe('the format the specification actually asks for', () => {
     for (const url of FACTS.person?.sameAs ?? []) {
       expect(text).toContain(`](${url})`);
     }
-    expect(text).toContain(`](mailto:${FACTS.organisation.email})`);
+    expect(text).toContain(`](mailto:${FACTS.organisation.email!})`);
     expect(text).toContain(`](${FACTS.origin})`);
   });
 

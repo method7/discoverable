@@ -212,3 +212,43 @@ describe('what the second consumer needed', () => {
     expect(claims).toContain('Simon Tregunna');
   });
 });
+
+describe('an organisation that publishes no email', () => {
+  /**
+   * The third consumer, a judo club, puts a phone number and a contact form on
+   * its site and keeps the address behind them. `email` was required, and that
+   * invited exactly the wrong repair: an invented `info@` that does not exist,
+   * which is what happened while this was being written.
+   *
+   * A schema that makes a site fabricate a contact detail is worse than one
+   * that lets it say nothing.
+   */
+  const club = {
+    name: 'A Judo Club',
+    origin: 'https://example.test',
+    description: 'Judo for juniors and adults.',
+    organisation: {
+      telephone: '+44 (0)7884102615',
+      address: { locality: 'Salisbury', country: 'GB' },
+    },
+  };
+
+  it('is accepted when it gives a telephone instead', () => {
+    const facts = parseFacts(club);
+
+    expect(facts.organisation.email).toBeUndefined();
+    expect(facts.organisation.telephone).toBe('+44 (0)7884102615');
+  });
+
+  it('requires it to be reachable somehow', () => {
+    // Neither is not a choice. An organisation a reader cannot contact is not
+    // describing itself usefully, and the failure should be at build time.
+    expect(() =>
+      parseFacts({ ...club, organisation: { address: { locality: 'Salisbury', country: 'GB' } } }),
+    ).toThrow(/email or telephone/);
+  });
+
+  it('does not offer a mailto: link it cannot fill in', () => {
+    expect(claimsOf(parseFacts(club))).not.toContain(undefined);
+  });
+});

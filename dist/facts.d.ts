@@ -17,7 +17,7 @@ export declare const siteFactsSchema: z.ZodObject<{
             postalCode: z.ZodOptional<z.ZodString>;
             country: z.ZodString;
         }, z.core.$strip>>;
-        email: z.ZodEmail;
+        email: z.ZodOptional<z.ZodEmail>;
         telephone: z.ZodOptional<z.ZodString>;
         sameAs: z.ZodDefault<z.ZodArray<z.ZodURL>>;
     }, z.core.$strip>;

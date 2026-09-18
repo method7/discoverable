@@ -215,7 +215,9 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
       ? []
       : person.sameAs.map((url) => ({ title: hostOf(url), url, notes: person.name }))),
     ...org.sameAs.map((url) => ({ title: hostOf(url), url, notes: facts.name })),
-    { title: `Email ${facts.name}`, url: `mailto:${org.email}`, notes: 'enquiries' },
+    ...(org.email === undefined
+      ? []
+      : [{ title: `Email ${facts.name}`, url: `mailto:${org.email}`, notes: 'enquiries' }]),
     ...(org.telephone === undefined
       ? []
       : [{ title: `Call ${facts.name}`, url: `tel:${org.telephone.replace(/[^+\d]/g, '')}` }]),

@@ -87,7 +87,22 @@ const organisation = z.object({
     legalName: z.string().min(1).optional(),
     registration: registration.optional(),
     address: address.optional(),
-    email: z.email(),
+    /**
+     * Optional, because not every organisation publishes one.
+     *
+     * It was required, and the third consumer is a judo club that deliberately
+     * puts a phone number and a contact form on its site and keeps the address
+     * behind them. Requiring it invited exactly the wrong repair: inventing a
+     * plausible `info@` that does not exist, which is what happened while this
+     * was being written and was caught only by going back to the old site's
+     * server config.
+     *
+     * A schema that makes a site fabricate a contact detail is worse than one
+     * that lets it say nothing. At least one of `email` or `telephone` must be
+     * present, checked below, because an organisation reachable by neither is not
+     * describing itself usefully.
+     */
+    email: z.email().optional(),
     /**
      * Published on purpose, or absent.
      *
@@ -133,6 +148,9 @@ export const siteFactsSchema = z.object({
      * instead of remembered by one.
      */
     alsoVisible: z.array(z.string().min(1)).default([]),
+}).refine((facts) => facts.organisation.email !== undefined || facts.organisation.telephone !== undefined, {
+    message: 'An organisation needs at least one of email or telephone: give a reader some way to reach it.',
+    path: ['organisation'],
 });
 /**
  * Parse and fail loudly.
