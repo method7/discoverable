@@ -1,7 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateBuild, routesIn, type SiteFacts } from './validate';
+import { parseFacts } from './facts';
+import { validateBuild, routesIn } from './validate';
 
 /**
  * The validator, checked against builds made on purpose to be wrong.
@@ -15,10 +16,23 @@ import { validateBuild, routesIn, type SiteFacts } from './validate';
 
 const ROOT = join('/tmp', 'delulu-validate-test');
 
-const FACTS: SiteFacts = {
-  url: 'https://example.test',
-  mustBeVisible: ['Acme Ltd', '12345678'],
-};
+/**
+ * A real facts object rather than a bag of strings.
+ *
+ * Parsed rather than cast, so these tests also assert the schema accepts the
+ * shape a site would actually write, and the claims they check are the ones
+ * `claimsOf` derives rather than a list kept in step by hand.
+ */
+const FACTS = parseFacts({
+  name: 'Acme',
+  origin: 'https://example.test',
+  description: 'A company that makes things.',
+  organisation: {
+    legalName: 'Acme Ltd',
+    registration: { scheme: 'UK Companies House company number', number: '12345678' },
+    email: 'hello@example.test',
+  },
+});
 
 const page = (options: { graph?: string; body?: string; canonical?: string; og?: boolean }) => `
 <!doctype html><html><head>
@@ -150,5 +164,48 @@ describe('what is simply missing', () => {
     // The failure that would otherwise read as success: nothing to check, so
     // nothing wrong.
     expect(validateBuild('/tmp/definitely-not-a-build', FACTS)).toHaveLength(1);
+  });
+});
+
+describe('the loop between the schema and the build', () => {
+  /**
+   * The reason the claims are derived rather than passed in.
+   *
+   * Before this, the validator was handed the strings to check. Somebody could
+   * add a company number to the structured data, forget the list, and the check
+   * would go on passing while covering one fewer thing than anybody believed.
+   * Here that is impossible: the fact and the requirement are the same
+   * declaration.
+   */
+  it('requires a new fact to be visible without anybody updating a list', () => {
+    const graph = '{"legalName":"Acme Ltd","identifier":"12345678"}';
+    const body = 'Made by Acme Ltd.';
+    const files = { 'index.html': page({ graph, body }) };
+
+    const withoutNumber = parseFacts({
+      name: 'Acme',
+      origin: 'https://example.test',
+      description: 'A company that makes things.',
+      organisation: { legalName: 'Acme Ltd', email: 'hello@example.test' },
+    });
+
+    // Nothing asks for the number, so the page not showing it is not a finding.
+    expect(validateBuild(sound(files), withoutNumber)).toEqual([]);
+
+    const withNumber = parseFacts({
+      name: 'Acme',
+      origin: 'https://example.test',
+      description: 'A company that makes things.',
+      organisation: {
+        legalName: 'Acme Ltd',
+        email: 'hello@example.test',
+        registration: { scheme: 'UK Companies House company number', number: '12345678' },
+      },
+    });
+
+    // The same build, the same page, one more fact declared.
+    expect(validateBuild(sound(files), withNumber)).toEqual([
+      { where: '/', problem: 'structured data asserts "12345678" and the page does not show it' },
+    ]);
   });
 });

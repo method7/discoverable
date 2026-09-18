@@ -26,23 +26,12 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { claimsOf, type SiteFacts } from './facts';
 
 export interface Finding {
   /** Which page or artefact, relative to the build directory. */
   readonly where: string;
   readonly problem: string;
-}
-
-export interface SiteFacts {
-  /** Canonical origin, without a trailing slash. */
-  readonly url: string;
-  /**
-   * Strings the structured data asserts, which must therefore be readable on
-   * the page. A company number in JSON-LD that a visitor cannot see is a claim
-   * made only to machines, which is the thing search engines penalise and the
-   * thing an honest page has no reason to do.
-   */
-  readonly mustBeVisible: readonly string[];
 }
 
 const text = (html: string): string =>
@@ -91,6 +80,7 @@ const pagesIn = (dir: string, prefix = '/'): { route: string; file: string }[] =
  */
 const visibleClaims = (pages: { route: string; file: string }[], facts: SiteFacts): Finding[] => {
   const findings: Finding[] = [];
+  const claims = claimsOf(facts);
 
   for (const page of pages) {
     const html = readFileSync(page.file, 'utf8');
@@ -102,7 +92,7 @@ const visibleClaims = (pages: { route: string; file: string }[], facts: SiteFact
 
     const readable = body.toLowerCase();
 
-    for (const fact of facts.mustBeVisible) {
+    for (const fact of claims) {
       if (!asserted.includes(fact)) continue;
       // Case-insensitively: a page is allowed to write a job title lowercase
       // inside a sentence, and it is still showing it.
@@ -142,7 +132,7 @@ const sitemapCovers = (
   );
 
   for (const page of pages) {
-    const expected = `${facts.url}${page.route}`;
+    const expected = `${facts.origin}${page.route}`;
     if (!listed.has(expected)) {
       findings.push({ where: 'sitemap.xml', problem: `${expected} was built but is not listed` });
     }
@@ -219,7 +209,7 @@ const canonicalAgrees = (
     const canonical = attr(html, /<link rel="canonical" href="([^"]+)"/);
     if (canonical === null) return [{ where: page.route, problem: 'no canonical link' }];
 
-    const expected = `${facts.url}${page.route}`;
+    const expected = `${facts.origin}${page.route}`;
     const same = canonical.replace(/\/$/, '') === expected.replace(/\/$/, '');
     return same
       ? []

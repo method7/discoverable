@@ -60,6 +60,59 @@ site says who it is in its own words.
 
 ## What is in it
 
+### `siteFactsSchema` and `claimsOf`
+
+One declaration of what a site says about itself. Everything else is derived
+from it.
+
+```ts
+import { parseFacts, claimsOf } from '@method7/discoverable';
+
+export const facts = parseFacts({
+  name: 'Acme',
+  origin: 'https://example.com',
+  description: 'A company that makes things.',
+  organisation: {
+    legalName: 'Acme Ltd',
+    email: 'hello@example.com',
+    registration: { scheme: 'UK Companies House company number', number: '12345678' },
+    address: { locality: 'Salisbury', region: 'Wiltshire', country: 'GB' },
+    sameAs: ['https://www.linkedin.com/company/acme'],
+  },
+  person: {
+    name: 'Simon Tregunna',
+    jobTitle: 'Founder and CTO',
+    url: 'https://method7.co.uk',
+    sameAs: ['https://www.linkedin.com/in/method7'],
+  },
+});
+
+claimsOf(facts);
+// ['Acme Ltd', '12345678', 'Salisbury', 'hello@example.com',
+//  'Simon Tregunna', 'Founder and CTO']
+```
+
+**The derivation is the point.** The validator used to be handed the strings to
+check, and that is the joint where this kind of tool quietly stops working:
+somebody adds a company number to the graph, forgets the list, and the check
+goes on passing while covering one fewer thing than anybody believes. Here the
+fact and the requirement are the same declaration, so a claim cannot be added
+without the validator knowing to check it.
+
+Not every field is a claim. A description is how a site introduces itself and a
+canonical URL is plumbing, and requiring them as literal text would mean asking
+a page to quote its own meta description at the reader. A company number is
+different, and so is a registered locality, a contact address, and the name and
+role of the human behind it. URLs are excluded too: a profile is asserted as an
+`href`, and requiring the address in the rendered text would fail any page that
+sensibly writes "LinkedIn" instead.
+
+The address block takes a town and a country and no street, deliberately. A
+registered address is public on the relevant register and usually belongs in a
+privacy policy where naming the controller is a legal requirement; putting it in
+structured data is a different act, and for a small company that line is
+frequently somebody's home.
+
 ### `validateBuild(dir, facts)`
 
 Reads HTML and XML off disk and returns findings. It knows nothing about any
@@ -67,11 +120,9 @@ framework, which is the entire design.
 
 ```ts
 import { validateBuild } from '@method7/discoverable';
+import { facts } from './facts';
 
-const findings = validateBuild('dist', {
-  url: 'https://example.com',
-  mustBeVisible: ['Acme Ltd', '12345678', 'hello@example.com'],
-});
+const findings = validateBuild('dist', facts);
 
 for (const f of findings) console.error(`${f.where}: ${f.problem}`);
 if (findings.length > 0) process.exit(1);
@@ -157,13 +208,11 @@ has had to survive a real site at least once.
 
 **Roadmap, in order:**
 
-1. **A Zod schema for the facts**, with the validator's requirements *derived*
-   from it. Today `mustBeVisible` is hand-passed, which is the weak joint:
-   somebody adds a claim to the graph, forgets the list, and the check silently
-   stops covering it. One declaration should answer both "what do I emit" and
-   "what must therefore be visible", and then a claim cannot be added without
-   the validator knowing to check it.
-2. **The JSON-LD graph builder.** Facts in, `@graph` out, node types as options.
+1. ~~**A Zod schema for the facts**, with the validator's requirements derived
+   from it.~~ **Done.** `siteFactsSchema` and `claimsOf`.
+2. **The JSON-LD graph builder.** The other half of the same loop: the graph
+   must emit exactly what `claimsOf` requires, and a test should assert it does,
+   so the two cannot drift. Facts in, `@graph` out, node types as options.
 3. **`llms.txt` and git `lastmod`**, both already pure in their home repos.
 4. **Consumed by `delulu.energy`** during its move to Astro.
 5. **Consumed by `method7.co.uk`.** This is the test. The second consumer is

@@ -14,5 +14,6 @@
  * Deliberately absent: rendering, the facts themselves, and any copy. See the
  * README for why the last one is not an oversight.
  */
+export * from './facts';
 export * from './validate';
 export * from './indexnow';
