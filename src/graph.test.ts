@@ -35,6 +35,20 @@ const FACTS = parseFacts({
 const node = (graph: Record<string, unknown>[], type: string) =>
   graph.find((n) => n['@type'] === type);
 
+/**
+ * Read down into a node without pretending to know its type.
+ *
+ * JSON-LD is genuinely dynamic: a value is a string, an object or an array
+ * depending on the property. Casting each access to `any` scattered the
+ * looseness across every assertion; one helper keeps it in a single place and
+ * makes the tests read as the paths they are checking.
+ */
+const at = (value: unknown, ...path: string[]): unknown =>
+  path.reduce<unknown>(
+    (current, key) => (current as Record<string, unknown> | undefined)?.[key],
+    value,
+  );
+
 describe('the graph agrees with the claims', () => {
   /**
    * Every value the graph asserts as a fact about a real person or company must
@@ -47,17 +61,17 @@ describe('the graph agrees with the claims', () => {
    */
   it('asserts nothing factual that the claims do not cover', () => {
     const graph = buildGraph(FACTS);
-    const org = node(graph, 'Organization') as Record<string, any>;
-    const person = node(graph, 'Person') as Record<string, any>;
+    const org = node(graph, 'Organization');
+    const person = node(graph, 'Person');
 
     const asserted = [
-      org.legalName,
-      org.identifier.value,
-      org.address.addressLocality,
-      org.contactPoint.email,
-      person.name,
-      person.jobTitle,
-    ];
+      at(org, 'legalName'),
+      at(org, 'identifier', 'value'),
+      at(org, 'address', 'addressLocality'),
+      at(org, 'contactPoint', 'email'),
+      at(person, 'name'),
+      at(person, 'jobTitle'),
+    ] as string[];
 
     const claims = claimsOf(FACTS);
     for (const value of asserted) expect(claims).toContain(value);
@@ -85,18 +99,18 @@ describe('the graph agrees with the claims', () => {
 describe('the organisation', () => {
   it('names the register rather than emitting a bare number', () => {
     // "12345678" on its own is a string nobody can look up.
-    const org = node(buildGraph(FACTS), 'Organization') as Record<string, any>;
+    const org = node(buildGraph(FACTS), 'Organization');
 
-    expect(org.identifier['@type']).toBe('PropertyValue');
-    expect(org.identifier.propertyID).toBe('UK Companies House company number');
+    expect(at(org, 'identifier', '@type')).toBe('PropertyValue');
+    expect(at(org, 'identifier', 'propertyID')).toBe('UK Companies House company number');
   });
 
   it('carries a town and a country and no street', () => {
-    const org = node(buildGraph(FACTS), 'Organization') as Record<string, any>;
+    const org = node(buildGraph(FACTS), 'Organization');
 
-    expect(org.address.addressLocality).toBe('Salisbury');
-    expect(org.address.addressCountry).toBe('GB');
-    expect(Object.keys(org.address)).not.toContain('streetAddress');
+    expect(at(org, 'address', 'addressLocality')).toBe('Salisbury');
+    expect(at(org, 'address', 'addressCountry')).toBe('GB');
+    expect(Object.keys(at(org, 'address') as object)).not.toContain('streetAddress');
   });
 
   it('can be a more specific type when that is true', () => {
@@ -109,8 +123,8 @@ describe('the organisation', () => {
   });
 
   it('points at the founder by id rather than describing them twice', () => {
-    const org = node(buildGraph(FACTS), 'Organization') as Record<string, any>;
-    expect(org.founder).toEqual({ '@id': personId(FACTS.origin) });
+    const org = node(buildGraph(FACTS), 'Organization');
+    expect(at(org, 'founder')).toEqual({ '@id': personId(FACTS.origin) });
   });
 });
 
@@ -130,13 +144,13 @@ describe('the person', () => {
   });
 
   it('carries sameAs, which is the reason it exists', () => {
-    const person = node(buildGraph(FACTS), 'Person') as Record<string, any>;
-    expect(person.sameAs).toEqual(['https://www.linkedin.com/in/method7']);
+    const person = node(buildGraph(FACTS), 'Person');
+    expect(at(person, 'sameAs')).toEqual(['https://www.linkedin.com/in/method7']);
   });
 
   it('works for the organisation, by id', () => {
-    const person = node(buildGraph(FACTS), 'Person') as Record<string, any>;
-    expect(person.worksFor).toEqual({ '@id': organisationId(FACTS.origin) });
+    const person = node(buildGraph(FACTS), 'Person');
+    expect(at(person, 'worksFor')).toEqual({ '@id': organisationId(FACTS.origin) });
   });
 });
 
@@ -151,10 +165,11 @@ describe('what a site adds itself', () => {
     const graph = buildGraph(FACTS, {
       extra: [{ '@type': 'MobileApplication', author: { '@id': organisationId(FACTS.origin) } }],
     });
-    const app = node(graph, 'MobileApplication') as Record<string, any>;
+    const app = node(graph, 'MobileApplication');
+    const author = at(app, 'author', '@id');
 
-    expect(app.author['@id']).toBe(organisationId(FACTS.origin));
-    expect(graph.some((n) => n['@id'] === app.author['@id'])).toBe(true);
+    expect(author).toBe(organisationId(FACTS.origin));
+    expect(graph.some((n) => n['@id'] === author)).toBe(true);
   });
 });
 
