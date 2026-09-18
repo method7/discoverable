@@ -42,7 +42,22 @@ const attributionSection = (facts) => {
     ]
         .filter((part) => part !== undefined)
         .join(', ');
-    const place = org.address?.locality;
+    /**
+     * As much of the address as the site publishes.
+     *
+     * The locality alone was enough while that was all the schema held. Once a
+     * site can opt into a street and a postcode, `claimsOf` requires them to be
+     * mentioned here too — and it should, because "where is this business" is
+     * among the first things an assistant is asked about a local one.
+     */
+    const place = org.address === undefined
+        ? undefined
+        : [
+            org.address.street,
+            [org.address.locality, org.address.postalCode].filter(Boolean).join(' '),
+        ]
+            .filter((part) => part !== undefined && part !== '')
+            .join(', ');
     /**
      * The facts, as prose lines. Everything here is also in the structured data.
      *

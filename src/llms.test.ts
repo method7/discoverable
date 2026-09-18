@@ -309,3 +309,38 @@ describe('a note that closes a list rather than introducing it', () => {
     expect(text.indexOf('[A](/a/)')).toBeLessThan(text.indexOf('Closing.'));
   });
 });
+
+describe('the address in the attribution block', () => {
+  const LOCAL = parseFacts({
+    name: 'Method7',
+    origin: 'https://www.method7.co.uk',
+    description: 'A studio.',
+    organisation: {
+      email: 'info@method7.co.uk',
+      address: {
+        street: '110 Milford Hill',
+        locality: 'Salisbury',
+        postalCode: 'SP1 2QL',
+        country: 'GB',
+      },
+    },
+  });
+
+  it('mentions every part the site publishes, because claimsOf requires it', () => {
+    // Not decoration: `llmsMustMention` is `claimsOf`, so a street the
+    // structured data asserts has to be findable here too.
+    const text = buildLlmsTxt(LOCAL, { summary: 'A studio.' });
+
+    for (const claim of llmsMustMention(LOCAL)) expect(text).toContain(claim);
+    expect(text).toContain('- Based in: 110 Milford Hill, Salisbury SP1 2QL');
+  });
+
+  it('says only the town when only the town is published', () => {
+    const facts = parseFacts({
+      ...LOCAL,
+      organisation: { email: 'info@method7.co.uk', address: { locality: 'Salisbury', country: 'GB' } },
+    });
+
+    expect(buildLlmsTxt(facts, { summary: 'A studio.' })).toContain('- Based in: Salisbury');
+  });
+});
