@@ -26,7 +26,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { claimsOf, type SiteFacts } from './facts';
+import { claimsOf, type SiteFacts } from './facts.js';
 
 export interface Finding {
   /** Which page or artefact, relative to the build directory. */

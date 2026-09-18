@@ -1,8 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseFacts } from './facts';
-import { validateBuild, routesIn } from './validate';
+import { parseFacts } from './facts.js';
+import { validateBuild, routesIn } from './validate.js';
 
 /**
  * The validator, checked against builds made on purpose to be wrong.

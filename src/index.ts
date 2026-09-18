@@ -14,9 +14,9 @@
  * Deliberately absent: rendering, the facts themselves, and any copy. See the
  * README for why the last one is not an oversight.
  */
-export * from './facts';
-export * from './graph';
-export * from './llms';
-export * from './lastModified';
-export * from './validate';
-export * from './indexnow';
+export * from './facts.js';
+export * from './graph.js';
+export * from './llms.js';
+export * from './lastModified.js';
+export * from './validate.js';
+export * from './indexnow.js';

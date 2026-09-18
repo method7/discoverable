@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { forgetCommitDates, lastModified } from './lastModified';
+import { forgetCommitDates, lastModified } from './lastModified.js';
 
 /**
  * Against a real repository, built for the purpose.

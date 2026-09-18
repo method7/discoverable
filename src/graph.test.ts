@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { claimsOf, parseFacts } from './facts';
-import { buildGraph, buildStructuredData, organisationId, personId } from './graph';
+import { claimsOf, parseFacts } from './facts.js';
+import { buildGraph, buildStructuredData, organisationId, personId } from './graph.js';
 
 /**
  * The graph, and its agreement with the claims.

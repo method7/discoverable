@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { claimsOf, parseFacts, siteFactsSchema } from './facts';
+import { claimsOf, parseFacts, siteFactsSchema } from './facts.js';
 
 /**
  * The schema, and the claims derived from it.

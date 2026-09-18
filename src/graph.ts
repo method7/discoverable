@@ -1,4 +1,4 @@
-import { type SiteFacts } from './facts';
+import { type SiteFacts } from './facts.js';
 
 /**
  * The structured data, built from the facts rather than written out per site.

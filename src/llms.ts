@@ -1,4 +1,4 @@
-import { claimsOf, type SiteFacts } from './facts';
+import { claimsOf, type SiteFacts } from './facts.js';
 
 /**
  * `llms.txt`, for the readers that are not people.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changedUrls, parseSitemap } from './indexnow';
+import { changedUrls, parseSitemap } from './indexnow.js';
 
 /**
  * Submitting the difference, not the sitemap.

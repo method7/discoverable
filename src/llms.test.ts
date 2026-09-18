@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseFacts } from './facts';
-import { buildLlmsTxt, llmsMustMention } from './llms';
+import { parseFacts } from './facts.js';
+import { buildLlmsTxt, llmsMustMention } from './llms.js';
 
 /**
  * `llms.txt`, and the facts reaching it without being retyped.

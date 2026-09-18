@@ -287,8 +287,17 @@ ChatGPT search and DuckDuckGo.
 ## Use it
 
 ```bash
-pnpm add @method7/discoverable
-pnpm verify   # typecheck, lint, test
+pnpm add github:method7/discoverable
+```
+
+A git dependency rather than a registry one, for now. The repository is public
+and pnpm runs the package's `prepare` on install, so a clone builds itself to
+`dist/` and there is nothing to publish and nothing to authenticate. Pin a
+commit — `github:method7/discoverable#<sha>` — anywhere reproducibility matters
+more than convenience.
+
+```bash
+pnpm verify   # typecheck, lint, test, build
 ```
 
 Node 22 or later. One runtime dependency, `zod`, for the schema. No framework
