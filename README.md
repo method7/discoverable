@@ -361,10 +361,16 @@ has had to survive a real site at least once.
    unchanged: the attribution block is now derived from the facts rather than
    written out, and `lastModified` gained a `cwd` because both original callers
    happened to run from a repository root and neither had noticed it mattered.
-4. **Consumed by `delulu.energy`** during its move to Astro.
-5. **Consumed by `method7.co.uk`.** This is the test. The second consumer is
-   what proves generality, and the package should be expected to change when it
-   lands.
+4. ~~**Consumed by `delulu.energy`** during its move to Astro.~~ **Done.** It
+   reads `facts.ts` for the graph, `llms.txt`, and the deploy's visible-claims
+   check, and deleted its own IndexNow module. Three changes came back: `extend`,
+   a `default` export condition, and `.js` on the relative imports. Adopting it
+   found two defects in the consumer that nothing there could see — a meta
+   description ten characters over the limit its own comment claimed, and an
+   em-dash reaching the page from a delivery document.
+5. **Consumed by `method7.co.uk`.** This is still the test. The first consumer
+   was extracted *from*, so it was always going to fit; the second one was not.
+   Expect the package to change again.
 6. **A static site template** that starts from this, so a new client site gets
    the whole arrangement on day one.
 
