@@ -53,6 +53,17 @@ export interface LlmsSection {
      * a consumer parsing markdown finds nothing to follow.
      */
     readonly links?: readonly LlmsLink[];
+    /**
+     * Markdown after the links, for a note that closes the list rather than
+     * introducing it.
+     *
+     * `body` comes first because most sections explain themselves and then point
+     * somewhere. This is the other shape: the second consumer lists its case
+     * studies and then adds one line covering the client work that has no page to
+     * link to, which belongs at the end of that list and read as a heading for it
+     * when rendered at the top.
+     */
+    readonly footnote?: string;
 }
 export interface LlmsOptions {
     /**

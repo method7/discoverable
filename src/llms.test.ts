@@ -275,3 +275,37 @@ describe('prose between the summary and the first heading', () => {
     expect(text).toContain('> One line.\n\n## Pages');
   });
 });
+
+describe('a note that closes a list rather than introducing it', () => {
+  it('renders after the links, and joins their list', () => {
+    // The second consumer lists its case studies and then covers the client
+    // work with no page to link to. As `body` that line rendered first and read
+    // like a heading for the studies beneath it.
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        {
+          heading: 'Selected work',
+          links: [{ title: 'Acme, case study', url: '/work/acme/' }],
+          footnote: '- Work with no public case study: Beta, Gamma.',
+        },
+      ],
+    });
+
+    expect(text).toContain(
+      '- [Acme, case study](/work/acme/)\n- Work with no public case study: Beta, Gamma.',
+    );
+  });
+
+  it('keeps body first, links next, footnote last', () => {
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        { heading: 'All three', body: 'Opening.', links: [{ title: 'A', url: '/a/' }], footnote: 'Closing.' },
+      ],
+    });
+
+    expect(text.indexOf('Opening.')).toBeLessThan(text.indexOf('[A](/a/)'));
+    expect(text.indexOf('[A](/a/)')).toBeLessThan(text.indexOf('Closing.'));
+  });
+});

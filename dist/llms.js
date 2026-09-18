@@ -101,15 +101,23 @@ const attributionSection = (facts) => {
  * a markdown parser, and a section like "Who makes it" — three facts, then five
  * places to go — is one list that happens to be built from two sources.
  */
+/** A blank line between two blocks, unless the first ends mid-list. */
+const joinBlocks = (before, after) => {
+    if (before === '')
+        return after;
+    if (after === '')
+        return before;
+    const listContinues = /(^|\n)\s*[-*+]\s[^\n]*$/.test(before) && /^\s*[-*+]\s/.test(after);
+    return `${before}${listContinues ? '\n' : '\n\n'}${after}`;
+};
 const render = (section) => {
-    const prose = section.body?.trim() ?? '';
-    const links = (section.links ?? []).map(linkLine).join('\n');
-    if (prose === '')
-        return links === '' ? `## ${section.heading}` : `## ${section.heading}\n\n${links}`;
-    if (links === '')
-        return `## ${section.heading}\n\n${prose}`;
-    const continuesAList = /(^|\n)\s*[-*+]\s[^\n]*$/.test(prose);
-    return `## ${section.heading}\n\n${prose}${continuesAList ? '\n' : '\n\n'}${links}`;
+    const blocks = [
+        section.body?.trim() ?? '',
+        (section.links ?? []).map(linkLine).join('\n'),
+        section.footnote?.trim() ?? '',
+    ].filter((block) => block !== '');
+    const content = blocks.reduce(joinBlocks, '');
+    return content === '' ? `## ${section.heading}` : `## ${section.heading}\n\n${content}`;
 };
 /**
  * The whole file.

@@ -56,6 +56,17 @@ export interface LlmsSection {
    * a consumer parsing markdown finds nothing to follow.
    */
   readonly links?: readonly LlmsLink[];
+  /**
+   * Markdown after the links, for a note that closes the list rather than
+   * introducing it.
+   *
+   * `body` comes first because most sections explain themselves and then point
+   * somewhere. This is the other shape: the second consumer lists its case
+   * studies and then adds one line covering the client work that has no page to
+   * link to, which belongs at the end of that list and read as a heading for it
+   * when rendered at the top.
+   */
+  readonly footnote?: string;
 }
 
 export interface LlmsOptions {
@@ -205,15 +216,25 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
  * a markdown parser, and a section like "Who makes it" — three facts, then five
  * places to go — is one list that happens to be built from two sources.
  */
+/** A blank line between two blocks, unless the first ends mid-list. */
+const joinBlocks = (before: string, after: string): string => {
+  if (before === '') return after;
+  if (after === '') return before;
+
+  const listContinues =
+    /(^|\n)\s*[-*+]\s[^\n]*$/.test(before) && /^\s*[-*+]\s/.test(after);
+  return `${before}${listContinues ? '\n' : '\n\n'}${after}`;
+};
+
 const render = (section: LlmsSection): string => {
-  const prose = section.body?.trim() ?? '';
-  const links = (section.links ?? []).map(linkLine).join('\n');
+  const blocks = [
+    section.body?.trim() ?? '',
+    (section.links ?? []).map(linkLine).join('\n'),
+    section.footnote?.trim() ?? '',
+  ].filter((block) => block !== '');
 
-  if (prose === '') return links === '' ? `## ${section.heading}` : `## ${section.heading}\n\n${links}`;
-  if (links === '') return `## ${section.heading}\n\n${prose}`;
-
-  const continuesAList = /(^|\n)\s*[-*+]\s[^\n]*$/.test(prose);
-  return `## ${section.heading}\n\n${prose}${continuesAList ? '\n' : '\n\n'}${links}`;
+  const content = blocks.reduce(joinBlocks, '');
+  return content === '' ? `## ${section.heading}` : `## ${section.heading}\n\n${content}`;
 };
 
 /**
