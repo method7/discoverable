@@ -48,6 +48,15 @@ const organisationNode = (facts, options) => {
                 addressCountry: org.address.country,
             }),
         sameAs: [...org.sameAs],
+        /**
+         * Email and telephone on the node itself as well as on the contact point.
+         *
+         * Both are valid on an Organization and consumers read one or the other,
+         * so emitting only the nested form loses readers for nothing. Found by
+         * diffing the second consumer's graph before and after adopting this: its
+         * hand-written version had a top-level `email` and the derived one did not.
+         */
+        email: org.email,
         telephone: org.telephone,
         contactPoint: compact({
             '@type': 'ContactPoint',

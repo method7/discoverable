@@ -345,3 +345,13 @@ describe('the fields the second consumer publishes', () => {
     expect(JSON.stringify(buildStructuredData(LOCAL))).not.toContain('null');
   });
 });
+
+describe('contact details, on the node and on the contact point', () => {
+  it('emits email in both places, because consumers read one or the other', () => {
+    const org = nodeOf(buildGraph(FACTS), 'Organization');
+    const contact = org['contactPoint'] as Record<string, unknown>;
+
+    expect(org['email']).toBe(FACTS.organisation.email);
+    expect(contact['email']).toBe(FACTS.organisation.email);
+  });
+});
