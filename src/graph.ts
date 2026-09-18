@@ -129,19 +129,25 @@ const organisationNode = (
         ? undefined
         : compact({
             '@type': 'PostalAddress',
+            // Absent unless the site opted in. See the note in facts.ts.
+            streetAddress: org.address.street,
             addressLocality: org.address.locality,
             addressRegion: org.address.region,
+            postalCode: org.address.postalCode,
             addressCountry: org.address.country,
           }),
 
     sameAs: [...org.sameAs],
 
-    contactPoint: {
+    telephone: org.telephone,
+
+    contactPoint: compact({
       '@type': 'ContactPoint',
       contactType: 'enquiries',
       email: org.email,
+      telephone: org.telephone,
       availableLanguage: facts.locale,
-    },
+    }),
 
     founder: facts.person === undefined ? undefined : { '@id': personId(facts.origin) },
 

@@ -51,31 +51,57 @@ const registration = z.object({
 });
 
 /**
- * Town and country, and deliberately no street.
+ * Where the organisation is. Town and country are required; the street is not.
  *
- * A registered address is public on the relevant register and usually belongs
- * in a privacy policy, where naming the controller is a legal requirement.
- * Putting it in structured data is a different act: it syndicates the line into
- * knowledge panels and assistant answers, and for a small company that address
- * is frequently somebody's home.
+ * The default is deliberately coarse. A registered address is public on the
+ * relevant register and usually belongs in a privacy policy, where naming the
+ * controller is a legal requirement. Putting it in structured data is a
+ * different act: it syndicates the line into knowledge panels and assistant
+ * answers, and for a small company that address is frequently somebody's home.
+ * A locality and a country carry the whole signal most sites want, which is
+ * that this is a real organisation in a real place.
  *
- * A locality and a country carry the whole signal anybody is looking for, which
- * is that this is a real company in a real place. If a site genuinely needs the
- * street on the page, it belongs in that page's own copy rather than here.
+ * But that is a default, not a rule, and the second consumer proved it. A
+ * studio with a Google Business Profile publishes its street on purpose:
+ * local search matches on it, the listing already carries it, and withholding
+ * it costs the site the thing it is optimising for. The first consumer, a
+ * consumer app, withholds the *same* address for the reason above.
+ *
+ * So both are expressible, and neither is the package's decision to make. Set
+ * `street` only where somebody has decided it should be public.
  */
 const address = z.object({
   locality: z.string().min(1),
   region: z.string().min(1).optional(),
+  /** Opt in. See above: absent is the default for good reasons. */
+  street: z.string().min(1).optional(),
+  postalCode: z.string().min(1).optional(),
   /** ISO 3166-1 alpha-2. */
   country: z.string().length(2),
 });
 
 const organisation = z.object({
-  /** The entity that can hold copyright and answer a data request. */
-  legalName: z.string().min(1),
+  /**
+   * The entity that can hold copyright and answer a data request.
+   *
+   * Optional, because not every site has one. It was required, and the second
+   * consumer is a trading name with no registered company behind it, which
+   * would have had to invent a legal person to satisfy a schema. A field that
+   * forces a site to state something untrue is worse than an absent field.
+   */
+  legalName: z.string().min(1).optional(),
   registration: registration.optional(),
   address: address.optional(),
   email: z.email(),
+  /**
+   * Published on purpose, or absent.
+   *
+   * A number somebody can ring is one of the strongest signals that an
+   * organisation is real, and it is exactly the sort of thing a local search
+   * result shows. It is also a direct line to a person, so like the street it
+   * is opt-in rather than assumed.
+   */
+  telephone: z.string().min(1).optional(),
   /** Profiles that resolve to this organisation, not to the people in it. */
   sameAs: z.array(z.url()).default([]),
 });
@@ -142,7 +168,10 @@ export const claimsOf = (facts: SiteFacts): string[] => {
     facts.organisation.legalName,
     facts.organisation.registration?.number,
     facts.organisation.address?.locality,
+    facts.organisation.address?.street,
+    facts.organisation.address?.postalCode,
     facts.organisation.email,
+    facts.organisation.telephone,
     facts.person?.name,
     facts.person?.jobTitle,
     ...facts.alsoVisible,

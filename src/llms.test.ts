@@ -212,3 +212,37 @@ describe('a section whose prose is already a list', () => {
     expect(text).toContain('Some words.\n\n- [Terms](/terms/)');
   });
 });
+
+describe('an organisation with no registered company', () => {
+  const TRADING_NAME = parseFacts({
+    name: 'Method7',
+    origin: 'https://www.method7.co.uk',
+    description: 'A software studio in Salisbury.',
+    organisation: {
+      email: 'info@method7.co.uk',
+      telephone: '+44 7971 389430',
+      address: { locality: 'Salisbury', country: 'GB' },
+    },
+    person: { name: 'Simon Tregunna', jobTitle: 'Senior full-stack engineer' },
+  });
+
+  it('says where it is rather than naming a company that does not exist', () => {
+    // The single "Company:" line degraded to "Company: based in Salisbury" once
+    // legalName became optional, which reads like a missing word.
+    const text = buildLlmsTxt(TRADING_NAME, { summary: 'A studio.' });
+
+    expect(text).toContain('- Based in: Salisbury');
+    expect(text).not.toContain('- Company:');
+  });
+
+  it('still names the company when there is one', () => {
+    expect(buildLlmsTxt(FACTS, { summary: 'A thing.' })).toContain('- Company: Acme Ltd');
+  });
+
+  it('offers the telephone as a tel: link, digits only', () => {
+    const text = buildLlmsTxt(TRADING_NAME, { summary: 'A studio.' });
+
+    expect(text).toContain('- Telephone: +44 7971 389430');
+    expect(text).toContain('[Call Method7](tel:+447971389430)');
+  });
+});

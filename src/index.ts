@@ -17,6 +17,7 @@
 export * from './facts.js';
 export * from './graph.js';
 export * from './llms.js';
+export * from './imageSize.js';
 export * from './lastModified.js';
 export * from './validate.js';
 export * from './indexnow.js';

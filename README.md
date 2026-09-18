@@ -107,11 +107,22 @@ role of the human behind it. URLs are excluded too: a profile is asserted as an
 `href`, and requiring the address in the rendered text would fail any page that
 sensibly writes "LinkedIn" instead.
 
-The address block takes a town and a country and no street, deliberately. A
-registered address is public on the relevant register and usually belongs in a
-privacy policy where naming the controller is a legal requirement; putting it in
+The address block defaults to a town and a country and no street. A registered
+address is public on the relevant register and usually belongs in a privacy
+policy where naming the controller is a legal requirement; putting it in
 structured data is a different act, and for a small company that line is
 frequently somebody's home.
+
+But that is a default, and the second consumer proved it should be. A studio
+with a Google Business Profile publishes its street on purpose: local search
+matches on it, and withholding it costs the site the thing it is optimising for.
+So `street`, `postalCode` and `telephone` are all optional, all absent unless a
+site opts in, and all treated as claims once present — a page that gives an
+address to machines and not to readers is the thing this exists to catch.
+
+`legalName` is optional too, for the same reason and against the same consumer:
+it is a trading name with no registered company, and a field that forces a site
+to invent a legal person is worse than an absent one.
 
 ### `buildGraph(facts, options?)`
 
@@ -260,6 +271,26 @@ about it and their own template is fifty processes to answer eleven questions.
 `cwd` defaults to the process's directory, which is right for a script run from
 a repository root and wrong the moment one is not — `git log` resolves paths
 against its own directory, and a miss looks exactly like a file with no history.
+
+### `imageSize(publicPath, publicDir)`
+
+An image's real dimensions and type, read out of its header.
+
+```ts
+const facts = imageSize('/og.png', 'public');
+// { width: 1200, height: 630, mime: 'image/png' }
+```
+
+Every scraper trusts `og:image:width`, `:height` and `:type` over the file, so a
+figure that has drifted produces a preview that reserves the wrong space, crops,
+or drops the image. Returns `null` for a remote image, an unreadable file or a
+format it does not handle, and the caller omits the tags rather than stating
+something untrue.
+
+PNG, WebP (all three variants) and JPEG. Both sites had grown their own copy,
+making the same decisions about the same three formats, and **neither had a
+test** — which is how a wrong offset would have survived, since the only symptom
+is seen by somebody sharing the page rather than by anybody running a build.
 
 ### `validateBuild(dir, facts)`
 

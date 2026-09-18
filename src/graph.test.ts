@@ -280,3 +280,68 @@ describe('extending the derived nodes', () => {
     expect(claimsOf(FACTS)).toContain(FACTS.organisation.legalName);
   });
 });
+
+describe('the fields the second consumer publishes', () => {
+  const LOCAL = parseFacts({
+    name: 'Method7',
+    origin: 'https://www.method7.co.uk',
+    description: 'A software studio in Salisbury.',
+    organisation: {
+      email: 'info@method7.co.uk',
+      telephone: '+44 7971 389430',
+      address: {
+        street: '110 Milford Hill',
+        locality: 'Salisbury',
+        region: 'Wiltshire',
+        postalCode: 'SP1 2QL',
+        country: 'GB',
+      },
+    },
+    person: { name: 'Simon Tregunna', jobTitle: 'Senior full-stack engineer' },
+  });
+
+  it('emits a full postal address when the site gave one', () => {
+    // A local business is found on the street and the postcode. This is the
+    // half of a listing that local search actually matches against.
+    const address = nodeOf(buildGraph(LOCAL), 'Organization')['address'] as Record<string, unknown>;
+
+    expect(address['streetAddress']).toBe('110 Milford Hill');
+    expect(address['postalCode']).toBe('SP1 2QL');
+    expect(address['addressLocality']).toBe('Salisbury');
+  });
+
+  it('omits the street entirely when the site did not', () => {
+    const address = nodeOf(buildGraph(FACTS), 'Organization')['address'] as Record<string, unknown>;
+
+    expect(address).not.toHaveProperty('streetAddress');
+    expect(address).not.toHaveProperty('postalCode');
+    expect(address['addressLocality']).toBe('Salisbury');
+  });
+
+  it('puts the telephone on the organisation and on the contact point', () => {
+    // Both, because consumers read one or the other and neither is wrong.
+    const org = nodeOf(buildGraph(LOCAL), 'Organization');
+    const contact = org['contactPoint'] as Record<string, unknown>;
+
+    expect(org['telephone']).toBe('+44 7971 389430');
+    expect(contact['telephone']).toBe('+44 7971 389430');
+  });
+
+  it('leaves the contact point valid when there is no telephone', () => {
+    const contact = nodeOf(buildGraph(FACTS), 'Organization')['contactPoint'] as Record<
+      string,
+      unknown
+    >;
+
+    expect(contact['email']).toBe(FACTS.organisation.email);
+    expect(contact).not.toHaveProperty('telephone');
+  });
+
+  it('omits legalName rather than emitting nothing under it', () => {
+    const org = nodeOf(buildGraph(LOCAL), 'Organization');
+
+    expect(org).not.toHaveProperty('legalName');
+    expect(org['name']).toBe('Method7');
+    expect(JSON.stringify(buildStructuredData(LOCAL))).not.toContain('null');
+  });
+});

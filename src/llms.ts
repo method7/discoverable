@@ -114,12 +114,23 @@ const hostOf = (url: string): string => {
 const attributionSection = (facts: SiteFacts): LlmsSection => {
   const { organisation: org, person } = facts;
 
-  const registration =
+  /**
+   * The company line, from whichever of the three parts exist.
+   *
+   * All of them are optional now: the second consumer is a trading name with no
+   * registered company, so "Company: undefined" was a real possibility and the
+   * line has to disappear rather than say that.
+   */
+  const registration = [
+    org.legalName,
     org.registration === undefined
-      ? org.legalName
-      : `${org.legalName}, ${org.registration.scheme} ${org.registration.number}`;
+      ? undefined
+      : `${org.registration.scheme} ${org.registration.number}`,
+  ]
+    .filter((part): part is string => part !== undefined)
+    .join(', ');
 
-  const place = org.address === undefined ? undefined : `based in ${org.address.locality}`;
+  const place = org.address?.locality;
 
   /**
    * The facts, as prose lines. Everything here is also in the structured data.
@@ -130,8 +141,22 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
    */
   const body = [
     person === undefined ? undefined : line(person.jobTitle, person.name),
-    line('Company', [registration, place].filter(Boolean).join(', ')),
+    /**
+     * "Company: Acme Ltd, UK Companies House 12345678, based in Salisbury", or
+     * just "Based in: Salisbury" when there is no company to name.
+     *
+     * Two lines rather than one with holes in it. With `legalName` and
+     * `registration` both optional, the single line degraded to "Company: based
+     * in Salisbury", which reads like a missing word rather than a site that
+     * happens to be a trading name.
+     */
+    registration === ''
+      ? line('Based in', place)
+      : line('Company', [registration, place === undefined ? undefined : `based in ${place}`]
+          .filter((part): part is string => part !== undefined)
+          .join(', ')),
     line('Enquiries', org.email),
+    line('Telephone', org.telephone),
   ]
     .filter((entry): entry is string => entry !== undefined)
     .join('\n');
@@ -152,6 +177,9 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
       : person.sameAs.map((url) => ({ title: hostOf(url), url, notes: person.name }))),
     ...org.sameAs.map((url) => ({ title: hostOf(url), url, notes: facts.name })),
     { title: `Email ${facts.name}`, url: `mailto:${org.email}`, notes: 'enquiries' },
+    ...(org.telephone === undefined
+      ? []
+      : [{ title: `Call ${facts.name}`, url: `tel:${org.telephone.replace(/[^+\d]/g, '')}` }]),
   ];
 
   return { heading: 'Who makes it', body, links };

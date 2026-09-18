@@ -148,3 +148,67 @@ describe('claimsOf', () => {
     expect(after).toContain('99999999');
   });
 });
+
+describe('what the second consumer needed', () => {
+  /**
+   * method7.co.uk is a trading name with a Google Business Profile, and it
+   * broke three assumptions this schema had quietly baked in. Each one is a
+   * case of the package holding an opinion that was right for the first
+   * consumer and wrong as a rule.
+   */
+  const m7 = {
+    name: 'Method7',
+    origin: 'https://www.method7.co.uk',
+    description: 'A software studio in Salisbury.',
+    organisation: {
+      email: 'info@method7.co.uk',
+      telephone: '+44 7971 389430',
+      address: {
+        street: '110 Milford Hill',
+        locality: 'Salisbury',
+        region: 'Wiltshire',
+        postalCode: 'SP1 2QL',
+        country: 'GB',
+      },
+    },
+    person: { name: 'Simon Tregunna', jobTitle: 'Senior full-stack engineer' },
+  };
+
+  it('accepts an organisation with no legal name, because not every one has one', () => {
+    // `legalName` was required. A trading name with no registered company
+    // behind it would have had to invent a legal person to satisfy the schema,
+    // and a field that forces a site to state something untrue is worse than an
+    // absent field.
+    const facts = parseFacts(m7);
+
+    expect(facts.organisation.legalName).toBeUndefined();
+    expect(claimsOf(facts)).not.toContain(undefined);
+  });
+
+  it('carries a street and postcode when a site has decided they are public', () => {
+    const facts = parseFacts(m7);
+
+    expect(facts.organisation.address?.street).toBe('110 Milford Hill');
+    expect(facts.organisation.address?.postalCode).toBe('SP1 2QL');
+  });
+
+  it('still defaults to no street, which is the point of it being optional', () => {
+    const facts = parseFacts({
+      ...m7,
+      organisation: { ...m7.organisation, address: { locality: 'Salisbury', country: 'GB' } },
+    });
+
+    expect(facts.organisation.address?.street).toBeUndefined();
+  });
+
+  it('requires a published street and phone to be visible, like every other claim', () => {
+    // The rule does not soften because the field is new. A page asserting an
+    // address to machines and not to readers is the thing this exists to catch.
+    const claims = claimsOf(parseFacts(m7));
+
+    expect(claims).toContain('110 Milford Hill');
+    expect(claims).toContain('SP1 2QL');
+    expect(claims).toContain('+44 7971 389430');
+    expect(claims).toContain('Simon Tregunna');
+  });
+});
