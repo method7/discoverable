@@ -187,3 +187,83 @@ describe('serialising', () => {
     expect(JSON.stringify(buildStructuredData(FACTS))).not.toContain('null');
   });
 });
+
+describe('extending the derived nodes', () => {
+  /**
+   * The joint the first consumer needed.
+   *
+   * delulu.energy's Organization asserted a logo, a share image, a slogan and
+   * four subjects it knows about, and its Person named the page principally
+   * about them. None of that is derivable from a company record, and adopting a
+   * shared builder without somewhere to put it would have meant dropping five
+   * true statements to fit a schema.
+   */
+  it('merges site-specific properties onto the organisation', () => {
+    const graph = buildGraph(FACTS, {
+      extend: {
+        organisation: {
+          logo: `${FACTS.origin}/icon.png`,
+          slogan: 'Real people. Real life.',
+          knowsAbout: ['social discovery'],
+        },
+      },
+    });
+
+    const org = node(graph, 'Organization');
+
+    expect(org['logo']).toBe(`${FACTS.origin}/icon.png`);
+    expect(org['slogan']).toBe('Real people. Real life.');
+    expect(org['knowsAbout']).toEqual(['social discovery']);
+  });
+
+  it('keeps everything the facts derive alongside them', () => {
+    // An extension that quietly replaced the node would be a worse version of
+    // writing the graph by hand.
+    const graph = buildGraph(FACTS, { extend: { organisation: { logo: '/icon.png' } } });
+    const org = node(graph, 'Organization');
+
+    expect(org['legalName']).toBe(FACTS.organisation.legalName);
+    expect(org['identifier']).toBeDefined();
+    expect(org['founder']).toEqual({ '@id': personId(FACTS.origin) });
+  });
+
+  it('extends the person and the website too', () => {
+    const graph = buildGraph(FACTS, {
+      extend: {
+        person: { mainEntityOfPage: `${FACTS.origin}/about/` },
+        website: { potentialAction: { '@type': 'SearchAction' } },
+      },
+    });
+
+    expect(node(graph, 'Person')['mainEntityOfPage']).toBe(`${FACTS.origin}/about/`);
+    expect(node(graph, 'WebSite')['potentialAction']).toBeDefined();
+  });
+
+  it('still emits no nulls, because an extension can carry undefined too', () => {
+    // `compact` runs after the merge rather than before it, which is the only
+    // ordering that holds. A site spreading an optional value in would
+    // otherwise reintroduce exactly the null the builder exists to avoid.
+    const document = buildStructuredData(FACTS, {
+      extend: { organisation: { logo: undefined, award: [] } },
+    });
+
+    expect(JSON.stringify(document)).not.toContain('null');
+    expect(node(document['@graph'] as Record<string, unknown>[], 'Organization')).not.toHaveProperty(
+      'award',
+    );
+  });
+
+  it('lets a site overwrite a derived claim, which is the risk it carries', () => {
+    /**
+     * Documented rather than prevented. The merge has to win for the feature to
+     * be useful, so this asserts the sharp edge exists and is where it is said
+     * to be: a site that overrides `legalName` here puts the graph and
+     * `claimsOf` into disagreement, and the validator then checks the page
+     * against a claim the page no longer makes.
+     */
+    const graph = buildGraph(FACTS, { extend: { organisation: { legalName: 'Something Else' } } });
+
+    expect(node(graph, 'Organization')['legalName']).toBe('Something Else');
+    expect(claimsOf(FACTS)).toContain(FACTS.organisation.legalName);
+  });
+});

@@ -140,6 +140,30 @@ state. None is derivable from a company record, and a package that modelled them
 would be modelling one site's content and calling it a standard. `extra` joins
 them to the same graph with the same `@id`s available to point at.
 
+`extend` does the same job for the three derived nodes, and it is the joint the
+first consumer needed:
+
+```ts
+buildStructuredData(facts, {
+  extend: {
+    organisation: { logo: `${facts.origin}/icon.png`, slogan, knowsAbout },
+    person: { mainEntityOfPage: `${facts.origin}/about/` },
+  },
+});
+```
+
+delulu.energy's Organization already asserted a logo, a share image, a slogan and
+what the company knows about, and its Person named the page principally about
+them. Adopting a shared builder without somewhere to put those would have meant
+dropping five true statements to fit a schema, and a shared builder that costs a
+site facts it was already publishing is not worth adopting.
+
+The merge wins over the derived properties, which is what makes it useful and
+what makes it sharp. Overriding `legalName` there puts the graph and `claimsOf`
+into disagreement, and the validator would then be checking the page against a
+claim the page no longer makes. There is a test asserting that edge is exactly
+where this says it is.
+
 **The graph and the claims are held together by a test.** `claimsOf` says what a
 page must show; `buildGraph` makes the assertion that demands it. If the graph
 gains a claim-bearing field and the claims do not, the test fails — because

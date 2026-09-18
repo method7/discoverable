@@ -48,6 +48,32 @@ export interface GraphOptions {
    * above rather than repeating their contents.
    */
   readonly extra?: readonly Record<string, unknown>[];
+
+  /**
+   * Extra properties merged onto the three derived nodes.
+   *
+   * The facts schema carries what is true of every organisation. A logo, a
+   * slogan, a list of what the company knows about, and the page that is
+   * principally about the founder are all true of *this* one, and modelling
+   * them here would be modelling one site's content and calling it a standard.
+   *
+   * This is the joint the first consumer needed. delulu.energy's graph asserted
+   * `logo`, `image`, `slogan` and `knowsAbout` on its Organization and
+   * `mainEntityOfPage` on its Person, and adopting the package without this
+   * would have meant quietly dropping five true statements to fit a schema. A
+   * shared builder that costs a site facts it was already publishing is not
+   * worth adopting.
+   *
+   * Merged over the derived properties, so a site can also correct one. That is
+   * deliberate and worth being careful with: overriding `legalName` here would
+   * put the graph and `claimsOf` into disagreement, and the validator would
+   * then be checking the page against a claim the page no longer makes.
+   */
+  readonly extend?: {
+    readonly organisation?: Record<string, unknown>;
+    readonly person?: Record<string, unknown>;
+    readonly website?: Record<string, unknown>;
+  };
 }
 
 export const organisationId = (origin: string): string => `${origin}/#organization`;
@@ -118,10 +144,15 @@ const organisationNode = (
     },
 
     founder: facts.person === undefined ? undefined : { '@id': personId(facts.origin) },
+
+    ...(options.extend?.organisation ?? {}),
   });
 };
 
-const personNode = (facts: SiteFacts): Record<string, unknown> | undefined => {
+const personNode = (
+  facts: SiteFacts,
+  options: GraphOptions,
+): Record<string, unknown> | undefined => {
   const { person } = facts;
   if (person === undefined) return undefined;
 
@@ -141,10 +172,12 @@ const personNode = (facts: SiteFacts): Record<string, unknown> | undefined => {
      */
     sameAs: [...person.sameAs],
     worksFor: { '@id': organisationId(facts.origin) },
+
+    ...(options.extend?.person ?? {}),
   });
 };
 
-const websiteNode = (facts: SiteFacts): Record<string, unknown> =>
+const websiteNode = (facts: SiteFacts, options: GraphOptions): Record<string, unknown> =>
   compact({
     '@type': 'WebSite',
     '@id': websiteId(facts.origin),
@@ -153,6 +186,8 @@ const websiteNode = (facts: SiteFacts): Record<string, unknown> =>
     description: facts.description,
     publisher: { '@id': organisationId(facts.origin) },
     inLanguage: facts.locale,
+
+    ...(options.extend?.website ?? {}),
   });
 
 /** The `@graph` array. Rendering it into a script tag is the site's business. */
@@ -160,12 +195,12 @@ export const buildGraph = (
   facts: SiteFacts,
   options: GraphOptions = {},
 ): Record<string, unknown>[] => {
-  const person = personNode(facts);
+  const person = personNode(facts, options);
 
   return [
     organisationNode(facts, options),
     ...(person === undefined ? [] : [person]),
-    websiteNode(facts),
+    websiteNode(facts, options),
     ...(options.extra ?? []),
   ];
 };
