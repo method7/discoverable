@@ -36,6 +36,19 @@ const node = (graph: Record<string, unknown>[], type: string) =>
   graph.find((n) => n['@type'] === type);
 
 /**
+ * The same, for assertions that read a property off it.
+ *
+ * `node()` can legitimately return nothing, which is what the presence tests
+ * check. Anything reading through the result wants a failure that names the
+ * missing node rather than a non-null assertion that reports a line number.
+ */
+const nodeOf = (graph: Record<string, unknown>[], type: string): Record<string, unknown> => {
+  const found = node(graph, type);
+  if (found === undefined) throw new Error(`no ${type} node in the graph`);
+  return found;
+};
+
+/**
  * Read down into a node without pretending to know its type.
  *
  * JSON-LD is genuinely dynamic: a value is a string, an object or an array
@@ -209,7 +222,7 @@ describe('extending the derived nodes', () => {
       },
     });
 
-    const org = node(graph, 'Organization');
+    const org = nodeOf(graph, 'Organization');
 
     expect(org['logo']).toBe(`${FACTS.origin}/icon.png`);
     expect(org['slogan']).toBe('Real people. Real life.');
@@ -220,7 +233,7 @@ describe('extending the derived nodes', () => {
     // An extension that quietly replaced the node would be a worse version of
     // writing the graph by hand.
     const graph = buildGraph(FACTS, { extend: { organisation: { logo: '/icon.png' } } });
-    const org = node(graph, 'Organization');
+    const org = nodeOf(graph, 'Organization');
 
     expect(org['legalName']).toBe(FACTS.organisation.legalName);
     expect(org['identifier']).toBeDefined();
@@ -235,8 +248,8 @@ describe('extending the derived nodes', () => {
       },
     });
 
-    expect(node(graph, 'Person')['mainEntityOfPage']).toBe(`${FACTS.origin}/about/`);
-    expect(node(graph, 'WebSite')['potentialAction']).toBeDefined();
+    expect(nodeOf(graph, 'Person')['mainEntityOfPage']).toBe(`${FACTS.origin}/about/`);
+    expect(nodeOf(graph, 'WebSite')['potentialAction']).toBeDefined();
   });
 
   it('still emits no nulls, because an extension can carry undefined too', () => {
@@ -248,7 +261,7 @@ describe('extending the derived nodes', () => {
     });
 
     expect(JSON.stringify(document)).not.toContain('null');
-    expect(node(document['@graph'] as Record<string, unknown>[], 'Organization')).not.toHaveProperty(
+    expect(nodeOf(document['@graph'] as Record<string, unknown>[], 'Organization')).not.toHaveProperty(
       'award',
     );
   });
@@ -263,7 +276,7 @@ describe('extending the derived nodes', () => {
      */
     const graph = buildGraph(FACTS, { extend: { organisation: { legalName: 'Something Else' } } });
 
-    expect(node(graph, 'Organization')['legalName']).toBe('Something Else');
+    expect(nodeOf(graph, 'Organization')['legalName']).toBe('Something Else');
     expect(claimsOf(FACTS)).toContain(FACTS.organisation.legalName);
   });
 });
