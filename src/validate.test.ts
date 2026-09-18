@@ -103,6 +103,36 @@ describe('claims the page does not support', () => {
     expect(validateBuild(dir, FACTS)).toEqual([]);
   });
 
+  it('does not count a fact that appears only inside an uppercase SCRIPT', () => {
+    // `<SCRIPT>` is valid HTML. A case-sensitive pattern leaves its contents in
+    // the extracted text, so the claim would count as shown by a page that does
+    // not show it — the validator failing open, which is the only way it can be
+    // wrong and still look right.
+    const dir = sound({
+      'index.html': page({
+        graph: '{"name":"Acme Ltd"}',
+        body: '<SCRIPT>Acme Ltd</SCRIPT><p>Nothing visible here.</p>',
+      }),
+    });
+
+    expect(validateBuild(dir, FACTS)).toEqual([
+      { where: '/', problem: 'structured data asserts "Acme Ltd" and the page does not show it' },
+    ]);
+  });
+
+  it('does not decode an entity it has just produced', () => {
+    // Chained replaces re-read their own output: `&amp;nbsp;` became `&nbsp;`
+    // and then a space, so a page literally displaying the text "&nbsp;" was
+    // read as displaying nothing there.
+    const dir = sound({
+      'index.html': page({ graph: '{"name":"Acme Ltd"}', body: 'Made by Acme&amp;nbsp;Ltd.' }),
+    });
+
+    expect(validateBuild(dir, FACTS)).toEqual([
+      { where: '/', problem: 'structured data asserts "Acme Ltd" and the page does not show it' },
+    ]);
+  });
+
   it('ignores a fact the structured data does not claim', () => {
     // The rule is "do not claim more than you show", not "show everything".
     const dir = sound({ 'index.html': page({ graph: '{}', body: 'Nothing in particular.' }) });

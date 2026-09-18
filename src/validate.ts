@@ -34,16 +34,38 @@ export interface Finding {
   readonly problem: string;
 }
 
+/**
+ * The readable text of a page, for deciding whether a claim is visible.
+ *
+ * Two details here were wrong in both sites before this was a package, and are
+ * fixed together because they fail the same way: by making the validator *more*
+ * lenient than it reads, so a page that does not show a fact passes anyway.
+ *
+ * **Case-insensitive, and anchored on a word boundary.** `<SCRIPT>` is valid
+ * HTML and a case-sensitive pattern leaves its contents in the text, so a claim
+ * appearing only inside a script would count as shown. `\b` is the other half:
+ * without it the pattern would also swallow a hypothetical `<scriptish>`.
+ *
+ * **Entities decoded in one pass, not three.** Chained replaces re-read their
+ * own output, so `&amp;nbsp;` became `&nbsp;` and then a space — meaning a page
+ * that literally displays the text "&nbsp;" was treated as displaying nothing
+ * there. One pass over a single alternation cannot double-decode.
+ */
+const ENTITIES: Readonly<Record<string, string>> = {
+  '&rsquo;': "'",
+  '&#8217;': "'",
+  '&amp;': '&',
+  '&nbsp;': ' ',
+};
+
 const text = (html: string): string =>
   html
-    .replace(/<script[\s\S]*?<\/script>/g, ' ')
-    .replace(/<style[\s\S]*?<\/style>/g, ' ')
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     // Entities the page writes deliberately, so a curly apostrophe in the
     // markup still matches a straight one in the facts.
-    .replace(/&rsquo;|&#8217;/g, "'")
-    .replace(/&amp;/g, '&')
-    .replace(/&nbsp;/g, ' ')
+    .replace(/&(?:rsquo|amp|nbsp);|&#8217;/gi, (entity) => ENTITIES[entity.toLowerCase()] ?? entity)
     .replace(/\s+/g, ' ');
 
 const attr = (html: string, pattern: RegExp): string | null => pattern.exec(html)?.[1] ?? null;
