@@ -56,7 +56,11 @@ const sound = (extra: Record<string, string> = {}) =>
   build({
     'index.html': page({ graph: '{"name":"Acme Ltd"}', body: 'Made by Acme Ltd.' }),
     'robots.txt': 'User-agent: *',
-    'llms.txt': '# Acme',
+    // An H1 and at least one markdown link. The first version of this fixture
+    // was `# Acme`, which passed because the only check was "not empty" — the
+    // fixture for a sound build carried the very defect an audit later found in
+    // a real one.
+    'llms.txt': '# Acme\n\n## Pages\n\n- [Home](https://example.test/): the site\n',
     'og.png': 'not really a png, but not empty',
     'sitemap.xml':
       '<urlset><url><loc>https://example.test/</loc><lastmod>2026-09-18T10:00:00.000Z</lastmod></url></urlset>',
@@ -150,6 +154,54 @@ describe('the share card', () => {
 });
 
 describe('what is simply missing', () => {
+  it('catches an llms.txt with no links in it', () => {
+    /**
+     * The finding a third-party audit reported, against a file that passed
+     * every check in this repository: "File does not appear to contain any
+     * links."
+     *
+     * It was accurate. Every URL was written bare inside a sentence, which
+     * reads perfectly well to a person and gives a consumer parsing markdown
+     * nothing to follow, in a file whose entire audience parses markdown.
+     */
+    const dir = sound({
+      'llms.txt': '# Acme\n\nEverything is at https://example.test/ and that is that.\n',
+    });
+
+    expect(validateBuild(dir, FACTS)).toContainEqual({
+      where: 'llms.txt',
+      problem: 'contains no markdown links, so nothing in it can be followed',
+    });
+  });
+
+  it('accepts a relative link and a mailto:, which are both real links', () => {
+    const dir = sound({
+      'llms.txt': '# Acme\n\n- [About](/about/)\n- [Email](mailto:hello@example.test)\n',
+    });
+
+    expect(validateBuild(dir, FACTS).filter((f) => f.where === 'llms.txt')).toEqual([]);
+  });
+
+  it('catches an llms.txt with no H1, because the format names one thing', () => {
+    const dir = sound({ 'llms.txt': '## Pages\n\n- [Home](https://example.test/)\n' });
+
+    expect(validateBuild(dir, FACTS)).toContainEqual({
+      where: 'llms.txt',
+      problem: 'has no H1 naming the site',
+    });
+  });
+
+  it('catches more than one H1, which names two things', () => {
+    const dir = sound({
+      'llms.txt': '# Acme\n\n- [Home](https://example.test/)\n\n# Acme Again\n',
+    });
+
+    expect(validateBuild(dir, FACTS)).toContainEqual({
+      where: 'llms.txt',
+      problem: 'has 2 H1 headings; the format names one thing',
+    });
+  });
+
   it('catches a missing llms.txt, which nothing else would notice', () => {
     const dir = sound();
     rmSync(join(dir, 'llms.txt'));

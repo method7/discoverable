@@ -25,11 +25,37 @@ import { claimsOf, type SiteFacts } from './facts.js';
  * product is for.
  */
 
+/**
+ * One entry in a section's link list.
+ *
+ * The format the specification is actually about: `- [name](url): notes`.
+ */
+export interface LlmsLink {
+  readonly title: string;
+  readonly url: string;
+  /** What is at the other end, in a clause. */
+  readonly notes?: string;
+}
+
 export interface LlmsSection {
   /** Rendered as `## heading`. */
   readonly heading: string;
-  /** Markdown. Written by the site, in its own voice. */
-  readonly body: string;
+  /** Markdown prose. Written by the site, in its own voice. */
+  readonly body?: string;
+  /**
+   * Where to go for more, as markdown links.
+   *
+   * This is the half of `llms.txt` that is not prose, and the half the
+   * specification is strictest about: a section is meant to carry a list of
+   * links, each a real markdown hyperlink, optionally with a note after a colon.
+   *
+   * It is also the half the first two implementations of this file got wrong.
+   * Both wrote their URLs bare, inside sentences, because that reads perfectly
+   * well to a person. An audit reported the file as containing no links at all,
+   * which was accurate: `https://example.com/privacy/` in prose is a string, and
+   * a consumer parsing markdown finds nothing to follow.
+   */
+  readonly links?: readonly LlmsLink[];
 }
 
 export interface LlmsOptions {
@@ -59,6 +85,25 @@ export interface LlmsOptions {
 const line = (label: string, value: string | undefined): string | undefined =>
   value === undefined || value === '' ? undefined : `- ${label}: ${value}`;
 
+/** `- [title](url): notes`, the shape the specification asks for. */
+const linkLine = (link: LlmsLink): string =>
+  `- [${link.title}](${link.url})${link.notes === undefined ? '' : `: ${link.notes}`}`;
+
+/**
+ * A URL as something a reader can say out loud.
+ *
+ * `https://www.linkedin.com/in/method7` is a fine link and a poor link *title*.
+ * Naming the host is what makes a list of five profiles readable, and the
+ * address is still there in the target.
+ */
+const hostOf = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+};
+
 /**
  * Who makes this, derived from the facts.
  *
@@ -76,20 +121,40 @@ const attributionSection = (facts: SiteFacts): LlmsSection => {
 
   const place = org.address === undefined ? undefined : `based in ${org.address.locality}`;
 
+  /**
+   * The facts, as prose lines. Everything here is also in the structured data.
+   *
+   * Only the two that are not addresses. A company number and a job title are
+   * claims to be read; a profile is a place to go, and belongs in the link list
+   * below so a consumer can follow it.
+   */
   const body = [
     person === undefined ? undefined : line(person.jobTitle, person.name),
-    person === undefined || person.sameAs.length === 0
-      ? undefined
-      : line(`${person.name} elsewhere`, person.sameAs.join(', ')),
     line('Company', [registration, place].filter(Boolean).join(', ')),
-    org.sameAs.length === 0 ? undefined : line(`${facts.name} elsewhere`, org.sameAs.join(', ')),
     line('Enquiries', org.email),
-    line('Website', facts.origin),
   ]
     .filter((entry): entry is string => entry !== undefined)
     .join('\n');
 
-  return { heading: 'Who makes it', body };
+  /**
+   * The same identity, as links.
+   *
+   * `sameAs` is the load-bearing field in the structured data for exactly this
+   * reason: a name is an island, and a name with addresses that resolve to the
+   * same person elsewhere is what lets a consumer join them up. Writing them
+   * bare in a sentence throws that away in a file whose entire audience parses
+   * markdown.
+   */
+  const links: LlmsLink[] = [
+    { title: facts.name, url: facts.origin, notes: 'the site itself' },
+    ...(person === undefined
+      ? []
+      : person.sameAs.map((url) => ({ title: hostOf(url), url, notes: person.name }))),
+    ...org.sameAs.map((url) => ({ title: hostOf(url), url, notes: facts.name })),
+    { title: `Email ${facts.name}`, url: `mailto:${org.email}`, notes: 'enquiries' },
+  ];
+
+  return { heading: 'Who makes it', body, links };
 };
 
 /**
@@ -115,7 +180,14 @@ export const buildLlmsTxt = (facts: SiteFacts, options: LlmsOptions): string => 
     .join('\n');
 
   const body = sections
-    .map((section) => `## ${section.heading}\n\n${section.body.trim()}`)
+    .map((section) => {
+      const parts = [`## ${section.heading}`];
+      if (section.body !== undefined && section.body.trim() !== '') parts.push(section.body.trim());
+      if (section.links !== undefined && section.links.length > 0) {
+        parts.push(section.links.map(linkLine).join('\n'));
+      }
+      return parts.join('\n\n');
+    })
     .join('\n\n');
 
   return `# ${facts.name}\n\n${blockquote}\n\n${body}\n`;

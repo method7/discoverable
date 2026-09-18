@@ -225,6 +225,49 @@ const requiredFiles = (dir: string): Finding[] =>
   });
 
 /**
+ * `llms.txt` is markdown with an H1 and links, not a text file with URLs in it.
+ *
+ * Present and non-empty was the whole check, and it passed a file that a
+ * third-party audit then reported as containing no links at all. The audit was
+ * right: the URLs were written bare inside sentences, which reads perfectly
+ * well to a person and gives a consumer parsing markdown nothing to follow.
+ *
+ * The format asks for a single H1 naming the thing, and sections carrying lists
+ * of markdown hyperlinks. Both are cheap to check and neither was checked,
+ * which is how a file can be generated, tested against its generator, byte
+ * compared, and still be wrong in the one way that matters to its only audience.
+ */
+const llmsFormat = (dir: string): Finding[] => {
+  const file = join(dir, 'llms.txt');
+  if (!existsSync(file)) return [];
+
+  const text = readFileSync(file, 'utf8');
+  const findings: Finding[] = [];
+
+  const h1 = [...text.matchAll(/^# .+/gm)];
+  if (h1.length === 0) {
+    findings.push({ where: 'llms.txt', problem: 'has no H1 naming the site' });
+  } else if (h1.length > 1) {
+    findings.push({
+      where: 'llms.txt',
+      problem: `has ${h1.length} H1 headings; the format names one thing`,
+    });
+  }
+
+  // `[title](target)`, with a target that is not empty. Deliberately permissive
+  // about the scheme: a relative path and a mailto: are both real links.
+  const links = [...text.matchAll(/\[[^\]]+\]\([^)\s]+\)/g)];
+  if (links.length === 0) {
+    findings.push({
+      where: 'llms.txt',
+      problem: 'contains no markdown links, so nothing in it can be followed',
+    });
+  }
+
+  return findings;
+};
+
+/**
  * Everything, against a built site.
  *
  * Returns findings rather than throwing, so a caller can print them all at once.
@@ -238,6 +281,7 @@ export const validateBuild = (dir: string, facts: SiteFacts): Finding[] => {
 
   return [
     ...requiredFiles(dir),
+    ...llmsFormat(dir),
     ...visibleClaims(pages, facts),
     ...sitemapCovers(dir, pages, facts),
     ...shareCard(dir, pages),

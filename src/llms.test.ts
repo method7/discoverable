@@ -75,11 +75,12 @@ describe('who makes it, derived rather than typed', () => {
 
   it('separates the person’s profiles from the company’s', () => {
     // They are different entities and collapsing them is what makes a crawler
-    // treat a founder and their company as one thing with five links.
+    // treat a founder and their company as one thing with five links. The note
+    // after each link is what says which is which, now that both are links.
     const text = buildLlmsTxt(FACTS, OPTIONS);
 
-    expect(text).toContain('Simon Tregunna elsewhere: https://www.linkedin.com/in/method7');
-    expect(text).toContain('Acme elsewhere: https://www.instagram.com/acme');
+    expect(text).toContain('[linkedin.com](https://www.linkedin.com/in/method7): Simon Tregunna');
+    expect(text).toContain('[instagram.com](https://www.instagram.com/acme): Acme');
   });
 
   it('omits a line rather than emitting an empty one', () => {
@@ -102,5 +103,81 @@ describe('who makes it, derived rather than typed', () => {
 
     expect(last.indexOf('## Who makes it')).toBeGreaterThan(last.indexOf('## What it is not'));
     expect(first.indexOf('## Who makes it')).toBeLessThan(first.indexOf('## What it is not'));
+  });
+});
+
+describe('the format the specification actually asks for', () => {
+  /**
+   * The audit that prompted all of this said, of a file that passed every check
+   * in this repository: "File does not appear to contain any links."
+   *
+   * It was right. Every URL was written bare inside a sentence, which reads
+   * perfectly well to a person and leaves a consumer parsing markdown with
+   * nothing to follow. `llms.txt` exists for consumers that parse markdown.
+   */
+  it('renders a section’s links as markdown, not as bare addresses', () => {
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        {
+          heading: 'Policies',
+          links: [
+            { title: 'Privacy', url: 'https://example.test/privacy/', notes: 'what is collected' },
+            { title: 'Terms', url: 'https://example.test/terms/' },
+          ],
+        },
+      ],
+    });
+
+    expect(text).toContain('- [Privacy](https://example.test/privacy/): what is collected');
+    expect(text).toContain('- [Terms](https://example.test/terms/)');
+  });
+
+  it('lets a section carry prose, links, or both', () => {
+    const both = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [
+        { heading: 'Both', body: 'Some prose.', links: [{ title: 'A', url: '/a/' }] },
+        { heading: 'Prose only', body: 'Just words.' },
+        { heading: 'Links only', links: [{ title: 'B', url: '/b/' }] },
+      ],
+    });
+
+    expect(both).toContain('Some prose.\n\n- [A](/a/)');
+    expect(both).toContain('## Prose only\n\nJust words.');
+    expect(both).toContain('## Links only\n\n- [B](/b/)');
+    // A heading with nothing under it would be a heading promising something.
+    expect(both).not.toMatch(/## \w[^\n]*\n\n\n/);
+  });
+
+  it('puts the identity links in the attribution block as links', () => {
+    // `sameAs` is the load-bearing field in the structured data because a name
+    // with addresses that resolve to the same person elsewhere is what lets a
+    // consumer join them up. Writing them bare throws that away here.
+    const text = buildLlmsTxt(FACTS, { summary: 'A thing.' });
+
+    for (const url of FACTS.person?.sameAs ?? []) {
+      expect(text).toContain(`](${url})`);
+    }
+    expect(text).toContain(`](mailto:${FACTS.organisation.email})`);
+    expect(text).toContain(`](${FACTS.origin})`);
+  });
+
+  it('titles a profile by its host rather than by its address', () => {
+    // Five raw URLs in a list is not a list anybody reads. The address is still
+    // the target.
+    const text = buildLlmsTxt(FACTS, { summary: 'A thing.' });
+
+    expect(text).toContain('[linkedin.com](https://www.linkedin.com/in/method7)');
+  });
+
+  it('has exactly one H1, because the format names one thing', () => {
+    const text = buildLlmsTxt(FACTS, {
+      summary: 'A thing.',
+      sections: [{ heading: 'A section', body: 'Words.' }],
+    });
+
+    expect([...text.matchAll(/^# .+/gm)]).toHaveLength(1);
+    expect(text.startsWith(`# ${FACTS.name}\n`)).toBe(true);
   });
 });

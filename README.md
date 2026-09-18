@@ -193,6 +193,22 @@ writeFileSync('public/llms.txt', buildLlmsTxt(facts, {
 }));
 ```
 
+A section carries prose, a list of links, or both:
+
+```ts
+{ heading: 'Policies', links: [
+  { title: 'Privacy', url: `${facts.origin}/privacy/`, notes: 'what is collected, and for how long' },
+  { title: 'Terms', url: `${facts.origin}/terms/` },
+]}
+```
+
+**The links are the half that is easy to get wrong.** Both sites wrote their URLs
+bare inside sentences, which reads perfectly well to a person, and an audit
+reported one of the files as containing no links at all. It was right:
+`https://example.com/privacy/` in prose is a string, and the entire audience for
+this file parses markdown. `validateBuild` checks for an H1 and at least one
+markdown link now, because nothing did.
+
 You bring the summary and the sections. It brings the frame and a **derived**
 "Who makes it" block: the founder and their role, the company and its number,
 where it is, how to reach it, every profile link. That block is the reason this
@@ -273,7 +289,10 @@ It checks that:
   `og:image:width` survives every test in a repository and is seen only by
   somebody sharing the page.
 - **canonical agrees with the sitemap.**
-- **`robots.txt`, `sitemap.xml` and `llms.txt` are present and not empty.**
+- **`robots.txt`, `sitemap.xml` and `llms.txt` are present and not empty**, and
+  that `llms.txt` is the format it claims to be: exactly one H1, and at least one
+  markdown link. Present-and-not-empty was the whole check until an audit
+  reported a passing file as containing no links.
 
 Error pages are excluded: a 404 belongs in no sitemap and correctly points its
 canonical at the root.
