@@ -67,6 +67,17 @@ const attr = (html, pattern) => pattern.exec(html)?.[1] ?? null;
  * misunderstanding the build.
  */
 const NOT_CONTENT = new Set(['/404/', '/500/', '/_not-found/']);
+/**
+ * A page that has asked not to be indexed.
+ *
+ * It belongs in no sitemap, and listing one asks a crawler to fetch a page that
+ * then tells it to go away. The second consumer excludes its privacy and
+ * thank-you pages by name for exactly this reason, and the validator reported
+ * both as missing — a finding that was the validator misunderstanding the
+ * build, which is the one kind of finding that teaches people to ignore it.
+ */
+const isNoindex = (html) => /<meta[^>]+name=["']robots["'][^>]+content=["'][^"']*noindex/i.test(html) ||
+    /<meta[^>]+content=["'][^"']*noindex[^"']*["'][^>]*name=["']robots["']/i.test(html);
 /** Every `<page>/index.html` the build produced, as site-relative routes. */
 const pagesIn = (dir, prefix = '/') => {
     const index = join(dir, 'index.html');
@@ -126,6 +137,9 @@ const sitemapCovers = (dir, pages, facts) => {
     const findings = [];
     const listed = new Set(entries.map((entry) => /<loc>([^<]+)<\/loc>/.exec(entry)?.[1] ?? '').filter(Boolean));
     for (const page of pages) {
+        // A noindex page is meant to be absent. See `isNoindex`.
+        if (isNoindex(readFileSync(page.file, 'utf8')))
+            continue;
         const expected = `${facts.origin}${page.route}`;
         if (!listed.has(expected)) {
             findings.push({ where: 'sitemap.xml', problem: `${expected} was built but is not listed` });

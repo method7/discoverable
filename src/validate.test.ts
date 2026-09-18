@@ -291,3 +291,51 @@ describe('the loop between the schema and the build', () => {
     ]);
   });
 });
+
+describe('pages that asked not to be indexed', () => {
+  /**
+   * Reported by the second consumer's first ever run. It excludes its privacy
+   * and thank-you pages from the sitemap because both set noindex, and the
+   * validator called both of them missing.
+   *
+   * A finding that is the validator misunderstanding the build is worse than no
+   * finding, because it is the kind that teaches people to skim the list.
+   */
+  it('are not expected in the sitemap', () => {
+    const dir = sound({
+      'private/index.html': page({
+        canonical: 'https://example.test/private/',
+        body: '<meta name="robots" content="noindex, nofollow"> Nothing to see.',
+      }),
+    });
+
+    expect(validateBuild(dir, FACTS)).toEqual([]);
+  });
+
+  it('are still expected when they are indexable', () => {
+    // The exemption is for noindex specifically, not for any page that happens
+    // to be missing.
+    const dir = sound({
+      'public-page/index.html': page({
+        canonical: 'https://example.test/public-page/',
+        body: 'A real page.',
+      }),
+    });
+
+    expect(validateBuild(dir, FACTS)).toContainEqual({
+      where: 'sitemap.xml',
+      problem: 'https://example.test/public-page/ was built but is not listed',
+    });
+  });
+
+  it('reads the attributes in either order', () => {
+    const dir = sound({
+      'private/index.html': page({
+        canonical: 'https://example.test/private/',
+        body: '<meta content="noindex" name="robots"> Nothing to see.',
+      }),
+    });
+
+    expect(validateBuild(dir, FACTS)).toEqual([]);
+  });
+});
