@@ -400,8 +400,8 @@ from a working application beats one designed in a vacuum, because every piece
 has had to survive a real site at least once.
 
 Three sites use it now: a consumer app, a studio, and a judo club. Each of
-the last two changed it, which is the useful part: the shape of a package is settled
-by the consumers it did not anticipate.
+the last two changed it, which is the useful part: the shape of a package is
+settled by the consumers it did not anticipate.
 
 **Roadmap, in order:**
 
