@@ -394,10 +394,14 @@ page.
 
 ## Status
 
-Early. Extracted from `delulu.energy` in September 2026, where every part of it
-was load-bearing before it was lifted. That is deliberate: a framework extracted
-from a working application beats one designed in a vacuum, because every piece
-has had to survive a real site at least once.
+Extracted from `delulu.energy` in September 2026, where every part of it was
+load-bearing before it was lifted. That is deliberate: a framework extracted from
+a working application beats one designed in a vacuum, because every piece has had
+to survive a real site at least once.
+
+Three sites use it now — a consumer app, a studio, and a judo club. Each of the
+last two changed it, which is the useful part: the shape of a package is settled
+by the consumers it did not anticipate.
 
 **Roadmap, in order:**
 
@@ -418,11 +422,28 @@ has had to survive a real site at least once.
    found two defects in the consumer that nothing there could see — a meta
    description ten characters over the limit its own comment claimed, and an
    em-dash reaching the page from a delivery document.
-5. **Consumed by `method7.co.uk`.** This is still the test. The first consumer
-   was extracted *from*, so it was always going to fit; the second one was not.
-   Expect the package to change again.
-6. **A static site template** that starts from this, so a new client site gets
-   the whole arrangement on day one.
+5. ~~**Consumed by `method7.co.uk`.**~~ **Done, and it was the test.** The
+   package held four opinions that were right once and wrong as a rule.
+   `legalName` was required, and a trading name with no company behind it would
+   have had to invent a legal person to satisfy it. The address had no street,
+   on the good argument that for a small company it is frequently somebody's
+   home — true as a default, wrong as a rule, because a studio with a Google
+   Business Profile publishes its street on purpose and local search matches on
+   it. `telephone` likewise. And `imageSize` came in from the other consumer,
+   which had been measuring share images nobody else could. Adopting it found
+   **22 pages asserting a job title no page displayed**, live for months.
+6. ~~**A static site template**~~ **Done.** `method7/astro-site-template`, built
+   from the two sites and then handed a third it knew nothing about: a judo club
+   on a 2014 Bootstrap build. That one found the fifth opinion — `email` was
+   required, and a required field invites the wrong repair. An `info@` address
+   was invented to satisfy it, put on the page and into the structured data, and
+   caught only by reading the old site's mail script. Optional now, with a
+   refinement that an organisation must publish *something* to be reached by.
+
+**Next:** publish to npm. Three consumers currently install from a tarball URL,
+because npm cannot build a git dependency and will crash resolving one. That is
+a workaround with a committed `dist/` holding it up, and it is the last thing
+here that only works because somebody knows why it is like that.
 
 The template is the point of all of it. This package is the half that should
 keep improving after a site ships; the template is the half every site rewrites
